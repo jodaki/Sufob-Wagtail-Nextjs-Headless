@@ -1,5 +1,5 @@
 # Sufob Wagtail Nextjs Headless Blog
-Full-stack Wagtail + Nextjs(14) Headless Blog with preview mode
+Full-stack Wagtail + Next.js Headless Blog with preview mode
 
 ## Features
 - **Full-stack Wagtail Headless Support**: Manages content via Wagtail and serves a dynamic frontend using Next.js.
