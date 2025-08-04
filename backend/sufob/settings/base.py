@@ -186,7 +186,7 @@ WAGTAIL_SITE_NAME = "sufob"
 WAGTAILSEARCH_BACKENDS = {
     "default": {
         "BACKEND": "wagtail.search.backends.database",
-        "SEARCH_CONFIG": "chinese",
+        "SEARCH_CONFIG": "English",
         "AUTO_UPDATE": True,
         "ATOMIC_REBUILD": True,
     }

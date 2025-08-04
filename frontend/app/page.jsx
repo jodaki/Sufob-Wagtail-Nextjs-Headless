@@ -7,6 +7,19 @@ import ViewCountShow from "@components/features/ViewCountShow";
 
 export default async function Page() {
     const posts = await getPosts(7);
+    
+    // Check if we have posts
+    if (!posts || !posts.items || posts.items.length === 0) {
+        return (
+            <div className="container my-12">
+                <h1 className="font-bold text-base md:text-md mb-4 block text-primary-purple">
+                    Charlie Sue外贸站
+                </h1>
+                <p>No posts available yet.</p>
+            </div>
+        );
+    }
+    
     return (
         <>
             <div className="container my-12">
@@ -35,8 +48,8 @@ export default async function Page() {
                                             className="object-cover w-full h-full"
                                             style={{ color: "transparent" }}
                                             src={
-                                                post.header_image.meta
-                                                    .download_url
+                                                post.header_image?.meta
+                                                    ?.download_url || '/placeholder-image.jpg'
                                             }
                                         />
                                     </div>
@@ -106,8 +119,8 @@ export default async function Page() {
                                             className="object-cover w-full h-full"
                                             style={{ color: "transparent" }}
                                             src={
-                                                posts.items[0].header_image.meta
-                                                    .download_url
+                                                posts.items[0]?.header_image?.meta
+                                                    ?.download_url || '/placeholder-image.jpg'
                                             }
                                         />
                                     </div>

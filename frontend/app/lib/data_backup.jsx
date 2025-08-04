@@ -1,18 +1,38 @@
-import { getApiUrl } from "./api";
+const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL;
+// Use different API URL for server-side and client-side
+const getApiUrl = () => {
+    // Server-side (in Docker container)
+    if (typeof window === 'undefined') {
+        return process.env.BACKEND_API_URL || 'http://sufob_backend:9000';
+    }
+    // Client-side (in browser)
+    return 'http://localhost:9000';
+};
+
+const getApiHeaders = () => {
+    const headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+    };
+    
+    // Add Host header for server-side requests
+    if (typeof window === 'undefined') {
+        headers['Host'] = 'localhost';
+    }
+    
+    return headers;
+};
 
 export const indexPages = async () => {
-    const apiUrl = getApiUrl();
     return await fetch(
-        `${apiUrl}/api/v2/pages/?${new URLSearchParams({
+        `${getApiUrl()}/api/v2/pages/?${new URLSearchParams({
             type: "blog.BlogPageIndex",
             slug: "blog",
             fields: "intro",
         })}`,
         {
             cache: "no-store",
-            headers: {
-                Accept: "application/json",
-            },
+            headers: getApiHeaders(),
         }
     ).then((response) => response.json());
 };
@@ -22,18 +42,17 @@ export const fetchPosts = async (
     categories = null,
     tags = null
 ) => {
-    const apiUrl = getApiUrl();
     const index = await indexPages();
     
-    // Check if we have a valid index page
+    // Check if index has items
     if (!index || !index.items || index.items.length === 0) {
+        console.error('No blog index page found');
         return { items: [], meta: { total_count: 0 } };
     }
     
-    const indexPage = index.items[0];
     const params = {
         type: "blog.BlogPage",
-        child_of: indexPage.id,
+        child_of: index["items"][0].id,
         fields: [
             "id",
             "title",
@@ -55,7 +74,7 @@ export const fetchPosts = async (
     if (categories) params.categories = categories;
     if (tags) params.tags = tags;
     const data = await fetch(
-        `${apiUrl}/api/v2/pages/?${new URLSearchParams(params)}`,
+        `${getApiUrl()}/api/v2/pages/?${new URLSearchParams(params)}`,
         {
             cache: "no-store",
             method: "GET",
@@ -68,9 +87,8 @@ export const fetchPosts = async (
 };
 
 export const getPostBySlug = async (slug) => {
-    const apiUrl = getApiUrl();
     const posts = await fetch(
-        `${apiUrl}/api/v2/pages/?${new URLSearchParams({
+        `${getApiUrl()}/api/v2/pages/?${new URLSearchParams({
             type: "blog.BlogPage",
             slug: slug,
             fields: [
@@ -97,19 +115,12 @@ export const getPostBySlug = async (slug) => {
             },
         }
     ).then((res) => res.json());
-    
-    // Check if we have a result
-    if (!posts || !posts.items || posts.items.length === 0) {
-        return null;
-    }
-    
     return posts.items[0];
 };
 
 export const getDraftByToken = async (content_type, token) => {
-    const apiUrl = getApiUrl();
     const post = await fetch(
-        `${apiUrl}/api/v2/page_preview/?content_type=${content_type}&token=${token}&format=json`,
+        `${getApiUrl()}/api/v2/page_preview/?content_type=${content_type}&token=${token}&format=json`,
         {
             cache: "no-store",
             method: "GET",
@@ -122,8 +133,7 @@ export const getDraftByToken = async (content_type, token) => {
 };
 
 export const getCategories = async () => {
-    const apiUrl = getApiUrl();
-    const categories = await fetch(`${apiUrl}/api/v2/categories/`, {
+    const categories = await fetch(`${getApiUrl()}/api/v2/categories/`, {
         cache: "no-store",
         method: "GET",
         headers: {
@@ -161,9 +171,8 @@ export const getTags = async (limit) => {
 };
 
 export const getTag = async (slug) => {
-    const apiUrl = getApiUrl();
     const tag = await fetch(
-        `${apiUrl}/api/v2/tags/?${new URLSearchParams({
+        `${getApiUrl()}/api/v2/tags/?${new URLSearchParams({
             slug: slug,
             fields: ["id", "name", "slug"].join(","),
         })}`,
@@ -189,9 +198,8 @@ export const filterPostsByCategory = async (limit, offset, categorySlug) => {
 };
 
 export const searchPosts = async (query) => {
-    const apiUrl = getApiUrl();
     return await fetch(
-        `${apiUrl}/v2/pages/?${new URLSearchParams({
+        `${PUBLIC_API_URL}/v2/pages/?${new URLSearchParams({
             search: query,
             fields: [
                 "id",

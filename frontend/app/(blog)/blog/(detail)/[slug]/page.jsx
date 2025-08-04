@@ -31,8 +31,16 @@ export async function generateMetadata({ params, searchParams }, parent) {
         ? await getDraftByToken(contentType, token)
         : await getPostBySlug(decodeSlug);
 
-    const title = post.meta.seo_title || post.title;
-    const description = post.meta.search_description || null;
+    // Handle case where post is not found
+    if (!post) {
+        return {
+            title: 'Post Not Found',
+            description: 'The requested blog post could not be found.',
+        };
+    }
+
+    const title = post.meta?.seo_title || post.title;
+    const description = post.meta?.search_description || null;
     const previousImages = (await parent).openGraph?.images || [];
 
     const result = {
@@ -73,18 +81,32 @@ export default async function BlogPage({ params, searchParams }) {
     const post = isEnabled
         ? await getDraftByToken(contentType, token)
         : await getPostBySlug(decodeSlug);
-    const firstPublishedDate = new Date(post.meta.first_published_at);
-    const tags = post.tags;
-    const headings = post.headings;
-    const mdHeadings = post.md_headings;
+        
+    // Handle case where post is not found
+    if (!post) {
+        return (
+            <div className="container my-12">
+                <h1 className="font-bold text-2xl mb-4">Post Not Found</h1>
+                <p>The requested blog post could not be found.</p>
+                <Link href="/blog" className="text-blue-600 hover:underline">
+                    ← Back to Blog
+                </Link>
+            </div>
+        );
+    }
+        
+    const firstPublishedDate = new Date(post.meta?.first_published_at);
+    const tags = post.tags || [];
+    const headings = post.headings || [];
+    const mdHeadings = post.md_headings || [];
     const combinedHeadings = headings.concat(mdHeadings);
-    const categories = post.categories;
+    const categories = post.categories || [];
 
     const jsonLd = {
         "@context": "https://schema.org",
         "@type": "BlogPosting",
-        headline: post.meta.seo_title ? post.meta.seo_title : post.title,
-        image: post.header_image.meta.download_url,
+        headline: post.meta?.seo_title ? post.meta.seo_title : post.title,
+        image: post.header_image?.meta?.download_url,
         datePublished: firstPublishedDate,
         dateModified: new Date(post.last_published_at),
         author: [

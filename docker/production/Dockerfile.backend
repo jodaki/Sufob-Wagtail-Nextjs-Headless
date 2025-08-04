@@ -16,8 +16,8 @@ RUN groupadd -g $HOST_GROUP_ID sufob \
 # RUN touch /etc/apt/sources.list
 # RUN echo "deb http://mirrors.aliyun.com/debian/ buster main non-free contrib" > /etc/apt/sources.list 
 # RUN cat /etc/apt/sources.list.d/debian.sources
-RUN sed -i "s@http://deb.debian.org@http://mirrors.aliyun.com@g" /etc/apt/sources.list 
-RUN sed -i "s@http://security.debian.org@http://mirrors.aliyun.com@g" /etc/apt/sources.list
+# RUN sed -i "s@http://deb.debian.org@http://mirrors.aliyun.com@g" /etc/apt/sources.list 
+# RUN sed -i "s@http://security.debian.org@http://mirrors.aliyun.com@g" /etc/apt/sources.list
 # RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
 
 #下面组合为何dbbackup提供客户端
@@ -98,8 +98,8 @@ RUN apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false
 #     gosu nobody true
 
 # 添加新用户，并设置 gosu 作为 entrypoint
-RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ \
-    && pip install --upgrade pip "gunicorn==20.0.4"
+RUN pip install --upgrade pip "gunicorn==20.0.4"
+
 
 
 # 创建目录并设置工作目录

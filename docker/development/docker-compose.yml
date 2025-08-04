@@ -26,7 +26,7 @@ services:
     #   ofelia.job-exec.build-nextjs.command: "npm run build"
 
   backend:
-    container_name: sufob_backend
+    container_name: sufob-backend
     build:
       context: ../../backend
       args:
@@ -82,7 +82,7 @@ services:
     environment:
       - TZ=Asia/Shanghai
     ports:
-        - "5432:5432"
+        - "15432:5432"
     networks: 
       - dev_sufobnet
     env_file:
