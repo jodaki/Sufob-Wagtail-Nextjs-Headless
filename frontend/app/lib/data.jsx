@@ -212,3 +212,133 @@ export const searchPosts = async (query) => {
         }
     ).then((res) => res.json());
 };
+
+// ==========================================
+// Price/Transaction related functions (Wagtail API)
+// ==========================================
+
+export const getPriceIndexPages = async () => {
+    const apiUrl = getApiUrl();
+    return await fetch(
+        `${apiUrl}/api/v2/pages/?${new URLSearchParams({
+            type: "prices.PriceIndexPage",
+            fields: "intro",
+        })}`,
+        {
+            cache: "no-store",
+            headers: {
+                Accept: "application/json",
+            },
+        }
+    ).then((response) => response.json());
+};
+
+export const getPricePages = async () => {
+    const apiUrl = getApiUrl();
+    return await fetch(
+        `${apiUrl}/api/v2/pages/?${new URLSearchParams({
+            type: "prices.PricePage",
+            fields: [
+                "id",
+                "title",
+                "slug",
+                "commodity_name",
+                "chart_description",
+                "show_statistics",
+                "chart_days",
+            ].join(","),
+        })}`,
+        {
+            cache: "no-store",
+            headers: {
+                Accept: "application/json",
+            },
+        }
+    ).then((response) => response.json());
+};
+
+export const getPricePageBySlug = async (slug) => {
+    const apiUrl = getApiUrl();
+    const pages = await fetch(
+        `${apiUrl}/api/v2/pages/?${new URLSearchParams({
+            type: "prices.PricePage",
+            slug: slug,
+            fields: [
+                "id",
+                "title",
+                "commodity_name",
+                "chart_description",
+                "show_statistics",
+                "chart_days",
+            ].join(","),
+        })}`,
+        {
+            cache: "no-store",
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        }
+    ).then((res) => res.json());
+    
+    if (!pages || !pages.items || pages.items.length === 0) {
+        return null;
+    }
+    
+    return pages.items[0];
+};
+
+export const getTransactionsFromWagtail = async (commodity = null, fromDate = null, toDate = null) => {
+    const apiUrl = getApiUrl();
+    const params = {};
+    if (commodity) params.commodity = commodity;
+    if (fromDate) params.from_date = fromDate;
+    if (toDate) params.to_date = toDate;
+    
+    const data = await fetch(
+        `${apiUrl}/api/v2/transactions/?${new URLSearchParams(params)}`,
+        {
+            cache: "no-store",
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        }
+    ).then((res) => res.json());
+    return data;
+};
+
+export const getCommoditiesFromWagtail = async () => {
+    const apiUrl = getApiUrl();
+    const data = await fetch(
+        `${apiUrl}/api/v2/commodities/`,
+        {
+            cache: "no-store",
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        }
+    ).then((res) => res.json());
+    return data.items || [];
+};
+
+export const getPriceChartData = async (commodity, days = 30) => {
+    const transactions = await getTransactionsFromWagtail(commodity);
+    
+    if (!transactions.items || transactions.items.length === 0) {
+        return [];
+    }
+    
+    // Filter and prepare chart data
+    const chartData = transactions.items
+        .slice(0, days)
+        .map(item => ({
+            time: item.transaction_date,
+            value: parseFloat(item.final_price) || parseFloat(item.base_price) || 0,
+            volume: item.contract_volume || 0,
+        }))
+        .sort((a, b) => a.time.localeCompare(b.time));
+    
+    return chartData;
+};

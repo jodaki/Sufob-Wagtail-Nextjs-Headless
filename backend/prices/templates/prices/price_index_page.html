@@ -1,0 +1,202 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">{{ page.title }}</h1>
+    
+    {% if page.intro %}
+        <div class="mb-8">
+            {{ page.intro|richtext }}
+        </div>
+    {% endif %}
+    
+    <!-- Price Pages Grid -->
+    {% if price_pages %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {% for price_page in price_pages %}
+                <div class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
+                    <h3 class="text-xl font-semibold mb-2">
+                        <a href="{{ price_page.url }}" class="text-blue-600 hover:text-blue-800">
+                            {{ price_page.title }}
+                        </a>
+                    </h3>
+                    <p class="text-gray-600 mb-4">{{ price_page.commodity_name }}</p>
+                    {% if price_page.chart_description %}
+                        <div class="text-sm text-gray-500">
+                            {{ price_page.chart_description|richtext|truncatewords:20 }}
+                        </div>
+                    {% endif %}
+                    <div class="mt-4">
+                        <a href="{{ price_page.url }}" class="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
+                            مشاهده چارت
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    <!-- Quick Chart Section -->
+    <div class="grid gap-6">
+        <!-- Category Selection -->
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold mb-4">نمایش سریع چارت</h2>
+            <div class="flex gap-4 items-center">
+                <select id="commodity-select" class="flex-1 p-3 border border-gray-300 rounded-lg">
+                    <option value="">انتخاب کالا...</option>
+                    {% for commodity in available_commodities %}
+                        <option value="{{ commodity }}">{{ commodity }}</option>
+                    {% endfor %}
+                </select>
+                <button id="load-chart-btn" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors">
+                    نمایش چارت
+                </button>
+            </div>
+        </div>
+        
+        <!-- Chart Container -->
+        <div class="bg-white p-6 rounded-lg shadow" id="chart-container" style="display: none;">
+            <h2 class="text-xl font-semibold mb-4">نمودار قیمت</h2>
+            <div id="price-chart" style="height: 400px;"></div>
+        </div>
+        
+        <!-- Price Table -->
+        <div class="bg-white p-6 rounded-lg shadow" id="table-container" style="display: none;">
+            <h2 class="text-xl font-semibold mb-4">آخرین قیمت‌ها</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full table-auto">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="px-4 py-2 text-right">تاریخ</th>
+                            <th class="px-4 py-2 text-right">قیمت نهایی</th>
+                            <th class="px-4 py-2 text-right">حجم معامله</th>
+                            <th class="px-4 py-2 text-right">تولیدکننده</th>
+                        </tr>
+                    </thead>
+                    <tbody id="price-table-body">
+                        <!-- Will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+    let chart;
+    let lineSeries;
+    
+    // Initialize chart
+    function initChart() {
+        const chartContainer = document.getElementById('price-chart');
+        chart = LightweightCharts.createChart(chartContainer, {
+            width: chartContainer.clientWidth,
+            height: 400,
+            layout: {
+                backgroundColor: '#ffffff',
+                textColor: '#333333',
+            },
+            grid: {
+                vertLines: {
+                    color: '#e1e1e1',
+                },
+                horzLines: {
+                    color: '#e1e1e1',
+                },
+            },
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Normal,
+            },
+            rightPriceScale: {
+                borderColor: '#cccccc',
+            },
+            timeScale: {
+                borderColor: '#cccccc',
+                timeVisible: true,
+                secondsVisible: false,
+            },
+        });
+        
+        lineSeries = chart.addLineSeries({
+            color: '#2196F3',
+            lineWidth: 2,
+        });
+    }
+    
+    // Load price data
+    async function loadPriceData(commodity) {
+        if (!commodity) return;
+        
+        try {
+            const response = await fetch(`/api/transactions/?commodity=${encodeURIComponent(commodity)}`);
+            const data = await response.json();
+            
+            if (data.results && data.results.length > 0) {
+                // Filter and prepare chart data
+                const filteredData = data.results.filter(item => item.commodity_name === commodity);
+                
+                const chartData = filteredData
+                    .slice(0, 30)
+                    .map(item => ({
+                        time: item.transaction_date,
+                        value: parseFloat(item.final_price) || parseFloat(item.base_price) || 0
+                    }))
+                    .sort((a, b) => a.time.localeCompare(b.time));
+                
+                // Update chart
+                if (chartData.length > 0) {
+                    lineSeries.setData(chartData);
+                    document.getElementById('chart-container').style.display = 'block';
+                }
+                
+                // Update table
+                updatePriceTable(filteredData.slice(0, 10));
+                document.getElementById('table-container').style.display = 'block';
+            }
+            
+        } catch (error) {
+            console.error('Error loading price data:', error);
+            alert('خطا در بارگذاری داده‌ها');
+        }
+    }
+    
+    // Update price table
+    function updatePriceTable(transactions) {
+        const tbody = document.getElementById('price-table-body');
+        tbody.innerHTML = '';
+        
+        transactions.forEach(transaction => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="px-4 py-2 border-b">${transaction.transaction_date}</td>
+                <td class="px-4 py-2 border-b">${(transaction.final_price || transaction.base_price || 0).toLocaleString()}</td>
+                <td class="px-4 py-2 border-b">${(transaction.contract_volume || 0).toLocaleString()}</td>
+                <td class="px-4 py-2 border-b">${transaction.producer || '-'}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+    
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        initChart();
+        
+        document.getElementById('load-chart-btn').addEventListener('click', function() {
+            const selectedCommodity = document.getElementById('commodity-select').value;
+            if (selectedCommodity) {
+                loadPriceData(selectedCommodity);
+            } else {
+                alert('لطفاً یک کالا انتخاب کنید');
+            }
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (chart) {
+                chart.applyOptions({ width: document.getElementById('price-chart').clientWidth });
+            }
+        });
+    });
+</script>
+{% endblock %}

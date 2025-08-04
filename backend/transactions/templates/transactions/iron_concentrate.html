@@ -1,0 +1,178 @@
+
+{% extends 'admin/base_site.html' %}
+{% load static %}
+
+
+{% block extrahead %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.1/dist/bootstrap-table.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+    <style>
+        body, table, th, td {
+            font-family: IRANSans, Tahoma, sans-serif !important;
+        }
+        .bootstrap-table .pagination .page-item.active .page-link {
+            background-color: #198754;
+            border-color: #198754;
+        }
+        .bootstrap-table .pagination .page-link {
+            color: #198754;
+        }
+        .bootstrap-table .pagination {
+            direction: ltr;
+        }
+        .bootstrap-table .fixed-table-pagination {
+            direction: rtl;
+            text-align: left;
+        }
+        .bootstrap-table .page-list {
+            direction: rtl;
+        }
+        .bootstrap-table .page-list .dropdown-toggle {
+            background: #f8f9fa;
+            color: #212529;
+        }
+        .bootstrap-table .page-list .dropdown-menu {
+            min-width: 80px;
+            text-align: right;
+        }
+        .bootstrap-table .page-list .dropdown-item {
+            text-align: right;
+        }
+        .table thead th {
+            vertical-align: middle;
+            text-align: center;
+        }
+        .table tbody td {
+            vertical-align: middle;
+            text-align: center;
+        }
+    </style>
+{% endblock %}
+
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="mb-4 text-center">جدول معاملات کنسانتره سنگ آهن</h1>
+    <hr>
+    <!-- فیلتر تاریخ -->
+    <form method="get" class="row g-2 mb-4 justify-content-center" style="direction: rtl;">
+        <div class="col-auto">
+            <label for="from_date" class="form-label">از تاریخ:</label>
+            <input type="text" id="from_date" name="from_date" class="form-control" autocomplete="off" value="{{ request.GET.from_date|default_if_none:'' }}">
+        </div>
+        <div class="col-auto">
+            <label for="to_date" class="form-label">تا تاریخ:</label>
+            <input type="text" id="to_date" name="to_date" class="form-control" autocomplete="off" value="{{ request.GET.to_date|default_if_none:'' }}">
+        </div>
+        <div class="col-auto align-self-end">
+            <button type="submit" class="btn btn-success">فیلتر</button>
+        </div>
+    </form>
+    <div class="table-responsive">
+        <div id="toolbar" class="mb-3" style="text-align: left;"></div>
+        <table 
+            id="ironTable"
+            class="table table-bordered table-striped table-hover align-middle"
+            data-pagination="true"
+            data-page-size="20"
+            data-page-list='[10, 20, 40, 50, 100, "All"]'
+            data-toolbar="#toolbar"
+            data-locale="fa-IR"
+            data-pagination-pre-text="قبلی"
+            data-pagination-next-text="بعدی"
+            data-pagination-detail-h-align="left"
+            data-pagination-h-align="center"
+            data-pagination-v-align="bottom"
+            style="direction: rtl;">
+            <thead class="table-dark">
+                <tr>
+                    <th>نام کالا</th>
+                    <th>نماد</th>
+                    <th>تالار</th>
+                    <th>تولید کننده</th>
+                    <th>نوع قرارداد</th>
+                    <th>قیمت پایانی میانگین موزون</th>
+                    <th>ارزش معامله (هزارریال)</th>
+                    <th>پایین ترین</th>
+                    <th>بالاترین</th>
+                    <th>قیمت پایه عرضه</th>
+                    <th>حجم عرضه</th>
+                    <th>تقاضا</th>
+                    <th>حجم قرارداد</th>
+                    <th>واحد</th>
+                    <th>تاریخ معامله</th>
+                    <th>عرضه کننده</th>
+                    <th>کارگزار</th>
+                    <th>نوع تسویه</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transactions %}
+                <tr>
+                    <td>{{ t.commodity_name }}</td>
+                    <td>{{ t.symbol }}</td>
+                    <td>{{ t.hall }}</td>
+                    <td>{{ t.producer }}</td>
+                    <td>{{ t.contract_type }}</td>
+                    <td>{% if t.final_price %}{{ t.final_price|floatformat:0 }}{% else %}<i class="fa fa-exclamation" aria-hidden="true"></i>{% endif %}</td>
+                    <td>{% if t.transaction_value %}{{ t.transaction_value }}{% else %}0{% endif %}</td>
+                    <td>{% if t.lowest_price %}{{ t.lowest_price|floatformat:0 }}{% else %}<i class="fa fa-exclamation" aria-hidden="true"></i>{% endif %}</td>
+                    <td>{% if t.highest_price %}{{ t.highest_price|floatformat:0 }}{% else %}<i class="fa fa-exclamation" aria-hidden="true"></i>{% endif %}</td>
+                    <td>{{ t.base_price|floatformat:0 }}</td>
+                    <td>{{ t.offer_volume }}</td>
+                    <td>{{ t.demand_volume }}</td>
+                    <td>{{ t.contract_volume }}</td>
+                    <td>{{ t.unit }}</td>
+                    <td>{{ t.transaction_date }}</td>
+                    <td>{{ t.supplier }}</td>
+                    <td>{{ t.broker }}</td>
+                    <td>{{ t.settlement_type }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="18" class="text-center">داده‌ای یافت نشد.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.1/dist/bootstrap-table.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.1/dist/locale/bootstrap-table-fa-IR.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/persian-date@1.0.6/dist/persian-date.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+    <script>
+        $(function() {
+            // فعال‌سازی راست‌چین و فونت برای کنترل‌های صفحه‌بندی و انتقال page-list به بالای جدول
+            $('#ironTable').on('post-body.bs.table', function () {
+                $('.fixed-table-pagination').addClass('d-flex justify-content-between align-items-center');
+                $('.page-list').addClass('ms-3');
+                $('.pagination').addClass('mb-0');
+            });
+            // انتقال page-list به بالای جدول
+            $('#ironTable').on('post-render.bs.table', function () {
+                var $pageList = $('.fixed-table-pagination .page-list');
+                if ($pageList.length) {
+                    $('#toolbar').html($pageList.clone());
+                    $pageList.hide();
+                }
+            });
+
+            // فعال‌سازی تقویم شمسی برای ورودی‌های تاریخ
+            $('#from_date').persianDatepicker({
+                format: 'YYYY-MM-DD',
+                initialValueType: 'gregorian',
+                autoClose: true,
+                toolbox: { calendarSwitch: { enabled: false } }
+            });
+            $('#to_date').persianDatepicker({
+                format: 'YYYY-MM-DD',
+                initialValueType: 'gregorian',
+                autoClose: true,
+                toolbox: { calendarSwitch: { enabled: false } }
+            });
+        });
+    </script>
+{% endblock %}

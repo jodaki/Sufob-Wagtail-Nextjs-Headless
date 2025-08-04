@@ -1,0 +1,231 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-6">
+        <nav class="text-sm text-gray-600 mb-2">
+            <a href="{{ page.get_parent.url }}" class="hover:text-blue-600">{{ page.get_parent.title }}</a>
+            <span class="mx-2">/</span>
+            <span>{{ page.title }}</span>
+        </nav>
+        <h1 class="text-3xl font-bold">{{ page.title }}</h1>
+        <p class="text-xl text-gray-600 mt-2">{{ page.commodity_name }}</p>
+    </div>
+    
+    {% if page.chart_description %}
+        <div class="mb-8 bg-blue-50 p-6 rounded-lg">
+            {{ page.chart_description|richtext }}
+        </div>
+    {% endif %}
+    
+    <div class="grid gap-6">
+        <!-- Chart Container -->
+        <div class="bg-white p-6 rounded-lg shadow">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">نمودار قیمت {{ page.commodity_name }}</h2>
+                <div class="text-sm text-gray-500">
+                    آخرین {{ page.chart_days }} روز
+                </div>
+            </div>
+            <div id="price-chart" style="height: 500px;"></div>
+        </div>
+        
+        <!-- Statistics -->
+        {% if page.show_statistics %}
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <h3 class="text-lg font-medium text-blue-800">آخرین قیمت</h3>
+                <p id="latest-price" class="text-2xl font-bold text-blue-900">-</p>
+                <span class="text-sm text-blue-600">ریال</span>
+            </div>
+            <div class="bg-green-50 p-4 rounded-lg">
+                <h3 class="text-lg font-medium text-green-800">بالاترین قیمت</h3>
+                <p id="highest-price" class="text-2xl font-bold text-green-900">-</p>
+                <span class="text-sm text-green-600">ریال</span>
+            </div>
+            <div class="bg-red-50 p-4 rounded-lg">
+                <h3 class="text-lg font-medium text-red-800">پایین‌ترین قیمت</h3>
+                <p id="lowest-price" class="text-2xl font-bold text-red-900">-</p>
+                <span class="text-sm text-red-600">ریال</span>
+            </div>
+            <div class="bg-yellow-50 p-4 rounded-lg">
+                <h3 class="text-lg font-medium text-yellow-800">میانگین قیمت</h3>
+                <p id="average-price" class="text-2xl font-bold text-yellow-900">-</p>
+                <span class="text-sm text-yellow-600">ریال</span>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Price Table -->
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold mb-4">تاریخچه معاملات {{ page.commodity_name }}</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full table-auto">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="px-4 py-2 text-right">تاریخ</th>
+                            <th class="px-4 py-2 text-right">قیمت نهایی</th>
+                            <th class="px-4 py-2 text-right">قیمت پایه</th>
+                            <th class="px-4 py-2 text-right">حجم (تن)</th>
+                            <th class="px-4 py-2 text-right">تولیدکننده</th>
+                            <th class="px-4 py-2 text-right">نوع تسویه</th>
+                        </tr>
+                    </thead>
+                    <tbody id="price-table-body">
+                        {% for transaction in transactions %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-2 border-b">{{ transaction.transaction_date }}</td>
+                            <td class="px-4 py-2 border-b font-semibold">
+                                {{ transaction.final_price|default:transaction.base_price|floatformat:0 }}
+                            </td>
+                            <td class="px-4 py-2 border-b">{{ transaction.base_price|floatformat:0 }}</td>
+                            <td class="px-4 py-2 border-b">{{ transaction.contract_volume|default:0 }}</td>
+                            <td class="px-4 py-2 border-b text-sm">{{ transaction.producer|default:"-"|truncatechars:20 }}</td>
+                            <td class="px-4 py-2 border-b text-sm">{{ transaction.settlement_type|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                هیچ داده‌ای برای این کالا یافت نشد
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Additional Info -->
+        <div class="bg-gray-50 p-6 rounded-lg">
+            <h3 class="text-lg font-semibold mb-3">اطلاعات تکمیلی</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <strong>تعداد کل معاملات:</strong> {{ transactions.count }} مورد
+                </div>
+                <div>
+                    <strong>آخرین به‌روزرسانی:</strong> 
+                    {% if transactions.first %}
+                        {{ transactions.first.transaction_date }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+    let chart;
+    let lineSeries;
+    const commodityName = "{{ page.commodity_name }}";
+    const showStatistics = {{ page.show_statistics|yesno:"true,false" }};
+    
+    // Transaction data from backend
+    const transactionData = [
+        {% for transaction in transactions %}
+        {
+            date: "{{ transaction.transaction_date }}",
+            finalPrice: {{ transaction.final_price|default:transaction.base_price|default:0 }},
+            basePrice: {{ transaction.base_price|default:0 }},
+            volume: {{ transaction.contract_volume|default:0 }}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    // Initialize chart
+    function initChart() {
+        const chartContainer = document.getElementById('price-chart');
+        chart = LightweightCharts.createChart(chartContainer, {
+            width: chartContainer.clientWidth,
+            height: 500,
+            layout: {
+                backgroundColor: '#ffffff',
+                textColor: '#333333',
+            },
+            grid: {
+                vertLines: {
+                    color: '#e1e1e1',
+                },
+                horzLines: {
+                    color: '#e1e1e1',
+                },
+            },
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Normal,
+            },
+            rightPriceScale: {
+                borderColor: '#cccccc',
+            },
+            timeScale: {
+                borderColor: '#cccccc',
+                timeVisible: true,
+                secondsVisible: false,
+            },
+        });
+        
+        lineSeries = chart.addLineSeries({
+            color: '#2196F3',
+            lineWidth: 3,
+            priceFormat: {
+                type: 'custom',
+                formatter: (price) => price.toLocaleString() + ' ریال',
+            },
+        });
+        
+        // Load chart data
+        loadChartData();
+    }
+    
+    // Load chart data
+    function loadChartData() {
+        if (transactionData.length > 0) {
+            const chartData = transactionData
+                .map(item => ({
+                    time: item.date,
+                    value: item.finalPrice
+                }))
+                .sort((a, b) => a.time.localeCompare(b.time));
+            
+            lineSeries.setData(chartData);
+            
+            // Update statistics if enabled
+            if (showStatistics) {
+                updateStatistics();
+            }
+        }
+    }
+    
+    // Update statistics
+    function updateStatistics() {
+        if (transactionData.length === 0) return;
+        
+        const prices = transactionData.map(item => item.finalPrice).filter(price => price > 0);
+        
+        if (prices.length > 0) {
+            const latestPrice = prices[0];
+            const highestPrice = Math.max(...prices);
+            const lowestPrice = Math.min(...prices);
+            const averagePrice = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+            
+            document.getElementById('latest-price').textContent = latestPrice.toLocaleString();
+            document.getElementById('highest-price').textContent = highestPrice.toLocaleString();
+            document.getElementById('lowest-price').textContent = lowestPrice.toLocaleString();
+            document.getElementById('average-price').textContent = Math.round(averagePrice).toLocaleString();
+        }
+    }
+    
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        initChart();
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (chart) {
+                chart.applyOptions({ width: document.getElementById('price-chart').clientWidth });
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "wagtailadmin/base.html" %}
+{% load wagtailadmin_tags %}
+
+{% block titletag %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <style>
+        .stats-box {
+            background: #f5f5f5;
+            border: 1px solid #e6e6e6;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 3px;
+        }
+        
+        .stats-item {
+            margin-bottom: 10px;
+        }
+        
+        .recent-imports {
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .recent-imports table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .recent-imports th, .recent-imports td {
+            padding: 8px;
+            text-align: right;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .recent-imports th {
+            background-color: #f2f2f2;
+        }
+        
+        .status-success {
+            color: green;
+        }
+        
+        .status-error {
+            color: red;
+        }
+        
+        .status-partial {
+            color: orange;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    {% include "wagtailadmin/shared/header.html" with title=title icon="download" %}
+
+    <div class="nice-padding">
+        <div class="row">
+            <div class="col9">
+                <form action="." method="POST">
+                    {% csrf_token %}
+                    
+                    <ul class="fields">
+                        {% for field in form %}
+                            <li class="field">
+                                <div class="field-content">
+                                    <div class="field-label">
+                                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                        {% if field.help_text %}
+                                            <div class="field-help">{{ field.help_text }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="field-input">
+                                        {{ field }}
+                                        {% if field.errors %}
+                                            <p class="error-message">{{ field.errors.0 }}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    
+                    <input type="submit" value="وارد کردن داده‌ها" class="button serious" />
+                </form>
+            </div>
+            
+            <div class="col3">
+                <div class="stats-box">
+                    <h3>آمار کلی</h3>
+                    <div class="stats-item">
+                        <strong>تعداد کل رکوردها:</strong> {{ stats.total_records|default:"0" }}
+                    </div>
+                    <div class="stats-item">
+                        <strong>تعداد کالاها:</strong> {{ stats.commodities_count|default:"0" }}
+                    </div>
+                    <div class="stats-item">
+                        <strong>آخرین تاریخ:</strong> {{ stats.latest_date|default:"--" }}
+                    </div>
+                </div>
+                
+                <div class="recent-imports">
+                    <h3>واردات اخیر</h3>
+                    {% if stats.recent_imports %}
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>کالا</th>
+                                    <th>تعداد</th>
+                                    <th>وضعیت</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for import_log in stats.recent_imports %}
+                                    <tr>
+                                        <td>{{ import_log.commodity_name }}</td>
+                                        <td>{{ import_log.imported_records }}</td>
+                                        <td class="status-{{ import_log.status }}">{{ import_log.get_status_display }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p>هیچ سابقه‌ای از واردات وجود ندارد.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

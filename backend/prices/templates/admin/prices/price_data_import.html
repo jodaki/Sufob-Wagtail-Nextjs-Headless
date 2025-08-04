@@ -1,0 +1,224 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block title %}وارد کردن داده‌های قیمت{% endblock %}
+
+{% block content_title %}
+    <h1>🔄 وارد کردن داده‌های قیمت کالا</h1>
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        .import-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #dee2e6;
+        }
+        .stats-section {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0066cc;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .form-section {
+            background: white;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .btn-import {
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn-import:hover {
+            background: #218838;
+        }
+        .recent-imports {
+            margin-top: 20px;
+        }
+        .import-log {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        .import-log.success { border-left-color: #28a745; }
+        .import-log.error { border-left-color: #dc3545; }
+        .import-log.partial { border-left-color: #ffc107; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="import-section">
+        <!-- آمار کلی -->
+        <div class="stats-section">
+            <h3>📊 آمار کلی داده‌های قیمت</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">{{ stats.total_records|default:0 }}</div>
+                    <div class="stat-label">کل رکوردها</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ stats.commodities_count|default:0 }}</div>
+                    <div class="stat-label">تعداد کالاها</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ stats.latest_date|default:"ندارد" }}</div>
+                    <div class="stat-label">آخرین تاریخ</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- فرم وارد کردن داده -->
+        <div class="form-section">
+            <h3>📥 وارد کردن داده‌های جدید</h3>
+            
+            <form method="post" action="">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label for="{{ form.commodity_name.id_for_label }}">{{ form.commodity_name.label }}</label>
+                    {{ form.commodity_name }}
+                    {% if form.commodity_name.help_text %}
+                        <small class="form-text text-muted">{{ form.commodity_name.help_text }}</small>
+                    {% endif %}
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label for="{{ form.start_date.id_for_label }}">{{ form.start_date.label }}</label>
+                        {{ form.start_date }}
+                        {% if form.start_date.help_text %}
+                            <small class="form-text text-muted">{{ form.start_date.help_text }}</small>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.end_date.id_for_label }}">{{ form.end_date.label }}</label>
+                        {{ form.end_date }}
+                        {% if form.end_date.help_text %}
+                            <small class="form-text text-muted">{{ form.end_date.help_text }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>{{ form.duplicate_handling.label }}</label>
+                    {% for choice in form.duplicate_handling %}
+                        <div style="margin: 5px 0;">
+                            {{ choice.tag }}
+                            <label for="{{ choice.id_for_label }}" style="font-weight: normal; margin-right: 10px;">
+                                {{ choice.choice_label }}
+                            </label>
+                        </div>
+                    {% endfor %}
+                    {% if form.duplicate_handling.help_text %}
+                        <small class="form-text text-muted">{{ form.duplicate_handling.help_text }}</small>
+                    {% endif %}
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        {{ form.auto_save }}
+                        <label for="{{ form.auto_save.id_for_label }}" style="font-weight: normal; margin-right: 10px;">
+                            {{ form.auto_save.label }}
+                        </label>
+                        {% if form.auto_save.help_text %}
+                            <small class="form-text text-muted">{{ form.auto_save.help_text }}</small>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        {{ form.fetch_from_api }}
+                        <label for="{{ form.fetch_from_api.id_for_label }}" style="font-weight: normal; margin-right: 10px;">
+                            {{ form.fetch_from_api.label }}
+                        </label>
+                        {% if form.fetch_from_api.help_text %}
+                            <small class="form-text text-muted">{{ form.fetch_from_api.help_text }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button type="submit" class="btn-import">🚀 شروع وارد کردن داده‌ها</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- لاگ واردات اخیر -->
+        {% if stats.recent_imports %}
+        <div class="recent-imports">
+            <h3>📋 واردات اخیر</h3>
+            {% for import_log in stats.recent_imports %}
+                <div class="import-log {{ import_log.status }}">
+                    <strong>{{ import_log.commodity_name }}</strong> - 
+                    {{ import_log.start_date }} تا {{ import_log.end_date }} - 
+                    <span class="badge badge-{{ import_log.status }}">{{ import_log.get_status_display }}</span>
+                    <br>
+                    <small>
+                        {{ import_log.imported_records }} وارد شده از {{ import_log.total_records }} رکورد - 
+                        {{ import_log.created_at|date:"Y/m/d H:i" }} توسط {{ import_log.created_by }}
+                    </small>
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- لینک‌های مفید -->
+    <div style="background: #fff3cd; padding: 15px; border-radius: 6px; margin: 20px 0;">
+        <h4>🔗 لینک‌های مفید</h4>
+        <ul>
+            <li><a href="{% url 'admin:prices_pricedata_changelist' %}">🗂️ مشاهده همه داده‌های قیمت</a></li>
+            <li><a href="{% url 'admin:prices_dataimportlog_changelist' %}">📊 تاریخچه واردات</a></li>
+            <li><a href="/admin/prices/export/">📤 خروجی گرفتن از داده‌ها</a></li>
+        </ul>
+    </div>
+{% endblock %}

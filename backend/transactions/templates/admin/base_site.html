@@ -1,0 +1,53 @@
+{% block sidebar %}
+    {{ block.super }}
+    <div class="sidebar-section">
+        <h6 class="mt-3 mb-2 text-muted">Transactions</h6>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/daily-info/">اطلاعات روزانه</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/import-export/">ابزار بارگذاری/استخراج داده</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/import-logs/">گزارشات ورود اطلاعات</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/import-export/confirm/">تایید تراکنش‌های مرحله‌ای</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/import-export/check-staged/">بررسی تراکنش‌های مرحله‌ای</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/admin/import-export/check-transaction/">بررسی تراکنش‌ها</a>
+            </li>
+        </ul>
+    </div>
+    <div class="sidebar-section">
+        <h6 class="mt-3 mb-2 text-muted">تنظیمات</h6>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'daily_settings' %}">تنظیمات اطلاعات روزانه</a>
+            </li>
+        </ul>
+    </div>
+{% endblock %}
+{% block content %}
+    {{ block.super }}
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info mt-3">
+                    <b>دسترسی سریع:</b>
+                    <a class="btn btn-outline-primary btn-sm ms-2" href="{% url 'daily_settings' %}">تنظیمات اطلاعات روزانه</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% extends "admin/base.html" %}
+{% load static %}
+{% block branding %}
+{{ block.super }}
+<a href="/admin/import-export/" class="btn btn-warning" style="margin-right: 20px;">ابزار Import/Export</a>
+{% endblock %}

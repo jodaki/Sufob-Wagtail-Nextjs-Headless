@@ -3,6 +3,10 @@ from blog.api.v2.views import (
     BlogTagAPIViewSet,
     PagePreviewAPIViewSet,
 )
+from prices.api.v2.views import (
+    TransactionAPIViewSet,
+    CommodityAPIViewSet,
+)
 from wagtail.api.v2.router import WagtailAPIRouter
 from wagtail.api.v2.views import PagesAPIViewSet
 from wagtail.documents.api.v2.views import DocumentsAPIViewSet
@@ -16,3 +20,5 @@ api_router.register_endpoint("documents", DocumentsAPIViewSet)
 api_router.register_endpoint("categories", BlogCategoryAPIViewSet)
 api_router.register_endpoint("tags", BlogTagAPIViewSet)
 api_router.register_endpoint("page_preview", PagePreviewAPIViewSet)
+api_router.register_endpoint("transactions", TransactionAPIViewSet)
+api_router.register_endpoint("commodities", CommodityAPIViewSet)

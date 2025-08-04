@@ -8,6 +8,7 @@ from sufob_comments import urls as sufob_comments_urls
 from wagtail import urls as wagtail_urls
 from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.documents import urls as wagtaildocs_urls
+from transactions.views import api_transactions, api_dailyinfo_list, api_commodities
 
 from .api import api_router
 
@@ -21,6 +22,9 @@ urlpatterns = [
         TemplateView.as_view(template_name="robots.txt", content_type="text/plain"),
     ),
     path("api/v2/", api_router.urls),
+    path("api/transactions/", api_transactions, name="api_transactions"),
+    path("api/dailyinfo/", api_dailyinfo_list, name="api_dailyinfo"),
+    path("api/commodities/", api_commodities, name="api_commodities"),
     path("view-api/update_view_count/<int:blog_page_id>/", update_view_count),
     path("comments/", include(sufob_comments_urls)),
     path("health-check/", health_check, name="health_check"),

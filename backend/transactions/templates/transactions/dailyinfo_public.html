@@ -1,0 +1,48 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">جدول اطلاعات روزانه</h2>
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>قیمت پایانی میانگین موزون</th>
+                <th>قیمت پایانی</th>
+                <th>پایین‌ترین</th>
+                <th>بالاترین</th>
+                <th>محدوده هفتگی</th>
+                <th>محدوده ۳۰ روزه</th>
+                <th>تغییر ماهه</th>
+                <th>نوع تسویه</th>
+                <th>تاریخ معامله</th>
+                <th>حجم قراردادها</th>
+                <th>تقاضا</th>
+                <th>حجم عرضه</th>
+                <th>قیمت پایه عرضه</th>
+                <th>ارزش معامله (هزارریال)</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for info in infos %}
+            <tr>
+                <td>{{ info.avg_final_price }}</td>
+                <td>{{ info.final_price }}</td>
+                <td>{{ info.lowest_price }}</td>
+                <td>{{ info.highest_price }}</td>
+                <td>{{ info.weekly_range }}</td>
+                <td>{{ info.monthly_range }}</td>
+                <td>{{ info.monthly_change }}</td>
+                <td>{{ info.settlement_type }}</td>
+                <td>{{ info.transaction_date }}</td>
+                <td>{{ info.contract_volume }}</td>
+                <td>{{ info.demand }}</td>
+                <td>{{ info.offer_volume }}</td>
+                <td>{{ info.base_price }}</td>
+                <td>{{ info.transaction_value }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="14" class="text-center">داده‌ای وجود ندارد.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

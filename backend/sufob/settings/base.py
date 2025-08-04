@@ -59,6 +59,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "blog",
     "streams",
+    "prices",
+    "transactions",
     "sufob_settings",
     "sufob_users",
     "wagtailmarkdown",
