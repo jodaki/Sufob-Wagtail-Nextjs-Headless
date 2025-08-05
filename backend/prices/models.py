@@ -1,7 +1,7 @@
 from django.db import models
 from wagtail.models import Page
 from wagtail.fields import RichTextField
-from wagtail.admin.panels import FieldPanel
+from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.api import APIField
 from wagtail_headless_preview.models import HeadlessPreviewMixin
 from django.utils import timezone
@@ -115,6 +115,29 @@ class PriceData(models.Model):
     
     def __str__(self):
         return f"{self.commodity_name} - {self.price_date} - {self.final_price}"
+    
+    # Wagtail admin panels
+    panels = [
+        MultiFieldPanel([
+            FieldPanel('commodity_name'),
+            FieldPanel('symbol'),
+            FieldPanel('price_date'),
+        ], heading='اطلاعات کلی'),
+        MultiFieldPanel([
+            FieldPanel('final_price'),
+            FieldPanel('avg_price'),
+            FieldPanel('lowest_price'),
+            FieldPanel('highest_price'),
+        ], heading='قیمت‌ها'),
+        MultiFieldPanel([
+            FieldPanel('volume'),
+            FieldPanel('value'),
+            FieldPanel('unit'),
+        ], heading='حجم و ارزش'),
+        MultiFieldPanel([
+            FieldPanel('source'),
+        ], heading='اطلاعات تکمیلی'),
+    ]
 
 
 class DataImportLog(models.Model):
@@ -145,3 +168,215 @@ class DataImportLog(models.Model):
     
     def __str__(self):
         return f"{self.commodity_name} - {self.start_date} تا {self.end_date} - {self.status}"
+    
+    # Wagtail admin panels
+    panels = [
+        MultiFieldPanel([
+            FieldPanel('commodity_name'),
+            FieldPanel('start_date'),
+            FieldPanel('end_date'),
+        ], heading='اطلاعات کلی'),
+        MultiFieldPanel([
+            FieldPanel('total_records'),
+            FieldPanel('imported_records'),
+            FieldPanel('updated_records'),
+            FieldPanel('duplicate_records'),
+            FieldPanel('error_records'),
+        ], heading='آمار رکوردها'),
+        MultiFieldPanel([
+            FieldPanel('status'),
+            FieldPanel('error_message'),
+            FieldPanel('created_by'),
+        ], heading='اطلاعات وضعیت'),
+    ]
+
+
+# مدل‌های جدید برای Scroll Time
+class MainCategory(models.Model):
+    """گروه‌های اصلی (MainCat)"""
+    value = models.IntegerField(unique=True, verbose_name="مقدار (API Value)")
+    name = models.CharField(max_length=100, verbose_name="نام گروه اصلی")
+    is_active = models.BooleanField(default=True, verbose_name="فعال")
+    order = models.IntegerField(default=0, verbose_name="ترتیب نمایش")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاریخ ایجاد")
+    
+    class Meta:
+        verbose_name = "گروه اصلی"
+        verbose_name_plural = "گروه‌های اصلی"
+        ordering = ['order', 'name']
+        indexes = [
+            models.Index(fields=['value']),
+        ]
+    
+    def __str__(self):
+        return f"{self.name} ({self.value})"
+    
+    panels = [
+        FieldPanel('name'),
+        FieldPanel('value'),
+        FieldPanel('is_active'),
+        FieldPanel('order'),
+    ]
+
+
+class Category(models.Model):
+    """گروه‌ها (Cat)"""
+    main_category = models.ForeignKey(
+        MainCategory, 
+        on_delete=models.CASCADE, 
+        related_name='categories',
+        verbose_name="گروه اصلی"
+    )
+    value = models.IntegerField(verbose_name="مقدار (API Value)")
+    name = models.CharField(max_length=100, verbose_name="نام گروه")
+    is_active = models.BooleanField(default=True, verbose_name="فعال")
+    order = models.IntegerField(default=0, verbose_name="ترتیب نمایش")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاریخ ایجاد")
+    
+    class Meta:
+        verbose_name = "گروه"
+        verbose_name_plural = "گروه‌ها"
+        ordering = ['main_category', 'order', 'name']
+        unique_together = [['main_category', 'value']]
+        indexes = [
+            models.Index(fields=['main_category', 'value']),
+        ]
+    
+    def __str__(self):
+        return f"{self.main_category.name} -> {self.name} ({self.value})"
+    
+    panels = [
+        FieldPanel('main_category'),
+        FieldPanel('name'),
+        FieldPanel('value'),
+        FieldPanel('is_active'),
+        FieldPanel('order'),
+    ]
+
+
+class SubCategory(models.Model):
+    """زیرگروه‌ها (SubCat)"""
+    category = models.ForeignKey(
+        Category, 
+        on_delete=models.CASCADE, 
+        related_name='subcategories',
+        verbose_name="گروه"
+    )
+    value = models.IntegerField(verbose_name="مقدار (API Value)")
+    name = models.CharField(max_length=100, verbose_name="نام زیرگروه")
+    is_active = models.BooleanField(default=True, verbose_name="فعال")
+    order = models.IntegerField(default=0, verbose_name="ترتیب نمایش")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاریخ ایجاد")
+    
+    class Meta:
+        verbose_name = "زیرگروه"
+        verbose_name_plural = "زیرگروه‌ها"
+        ordering = ['category', 'order', 'name']
+        unique_together = [['category', 'value']]
+        indexes = [
+            models.Index(fields=['category', 'value']),
+        ]
+    
+    def __str__(self):
+        return f"{self.category.main_category.name} -> {self.category.name} -> {self.name} ({self.value})"
+    
+    panels = [
+        FieldPanel('category'),
+        FieldPanel('name'),
+        FieldPanel('value'),
+        FieldPanel('is_active'),
+        FieldPanel('order'),
+    ]
+
+
+class ScrollTimeRequest(models.Model):
+    """درخواست‌های Scroll Time برای دریافت داده از سرور بورس"""
+    DUPLICATE_HANDLING_CHOICES = [
+        ('skip', 'رد کردن رکوردهای تکراری'),
+        ('replace', 'جایگزینی رکوردهای تکراری'),
+        ('update', 'بروزرسانی رکوردهای موجود'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('pending', 'در انتظار'),
+        ('processing', 'در حال پردازش'),
+        ('preview', 'پیش‌نمایش'),
+        ('completed', 'تکمیل شده'),
+        ('failed', 'ناموفق'),
+    ]
+    
+    # انتخاب دسته‌بندی
+    main_category = models.ForeignKey(MainCategory, on_delete=models.CASCADE, verbose_name="گروه اصلی")
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, verbose_name="گروه")
+    subcategory = models.ForeignKey(SubCategory, on_delete=models.CASCADE, verbose_name="زیرگروه")
+    
+    # بازه زمانی (تقویم شمسی)
+    start_date_shamsi = models.CharField(max_length=10, verbose_name="تاریخ شروع (شمسی)")
+    end_date_shamsi = models.CharField(max_length=10, verbose_name="تاریخ پایان (شمسی)")
+    
+    # تنظیمات پردازش
+    duplicate_handling = models.CharField(
+        max_length=20, 
+        choices=DUPLICATE_HANDLING_CHOICES, 
+        default='skip',
+        verbose_name="نحوه مواجهه با داده‌های تکراری"
+    )
+    auto_save = models.BooleanField(default=False, verbose_name="ذخیره خودکار در پایگاه داده")
+    
+    # وضعیت و نتایج
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', verbose_name="وضعیت درخواست")
+    response_data = models.JSONField(null=True, blank=True, verbose_name="داده‌های پاسخ")
+    total_records = models.IntegerField(default=0, verbose_name="تعداد کل رکوردها")
+    processed_records = models.IntegerField(default=0, verbose_name="رکوردهای پردازش شده")
+    error_message = models.TextField(blank=True, verbose_name="پیام خطا")
+    
+    # متاداده
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="تاریخ ایجاد")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="تاریخ بروزرسانی")
+    created_by = models.CharField(max_length=100, blank=True, verbose_name="ایجاد شده توسط")
+    
+    class Meta:
+        verbose_name = "درخواست Scroll Time"
+        verbose_name_plural = "درخواست‌های Scroll Time"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.main_category.name} -> {self.category.name} -> {self.subcategory.name} ({self.start_date_shamsi} تا {self.end_date_shamsi})"
+    
+    def get_payload(self):
+        """ایجاد payload برای ارسال به سرور بورس"""
+        return {
+            'Language': 8,
+            'fari': False,
+            'GregorianFromDate': self.start_date_shamsi,
+            'GregorianToDate': self.end_date_shamsi,
+            'MainCat': self.main_category.value if self.main_category else 0,
+            'Cat': self.category.value if self.category else 0,
+            'SubCat': self.subcategory.value if self.subcategory else 0,
+            'Producer': 0
+        }
+    
+    panels = [
+        MultiFieldPanel([
+            FieldPanel('main_category'),
+            FieldPanel('category'),
+            FieldPanel('subcategory'),
+        ], heading='انتخاب دسته‌بندی'),
+        MultiFieldPanel([
+            FieldPanel('start_date_shamsi'),
+            FieldPanel('end_date_shamsi'),
+        ], heading='بازه زمانی'),
+        MultiFieldPanel([
+            FieldPanel('duplicate_handling'),
+            FieldPanel('auto_save'),
+        ], heading='تنظیمات پردازش'),
+        MultiFieldPanel([
+            FieldPanel('status'),
+            FieldPanel('total_records'),
+            FieldPanel('processed_records'),
+            FieldPanel('error_message'),
+        ], heading='اطلاعات وضعیت'),
+    ]

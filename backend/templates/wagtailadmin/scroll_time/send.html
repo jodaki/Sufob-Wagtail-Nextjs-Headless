@@ -1,0 +1,197 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+{% load wagtailadmin_tags %}
+
+{% block titletag %}{{ page_title }}{% endblock %}
+
+{% block content %}
+    <header class="header">
+        <div class="row">
+            <div class="left">
+                <div class="col">
+                    <h1 class="header-title">{{ page_title }}</h1>
+                    {% if page_subtitle %}
+                        <p class="header-subtitle">{{ page_subtitle }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="content-wrapper">
+        <div class="content">
+            <div class="nice-padding">
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="messages">
+                            <div class="message message-{{ message.tags }}">
+                                {{ message }}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <!-- Debug Information در صورت خطا -->
+                {% if debug_info and api_error %}
+                    <div class="row">
+                        <div class="col12">
+                            <div class="help-block help-critical">
+                                <h3>🔍 اطلاعات Debug برای بررسی مشکل</h3>
+                                <pre style="background: #f8f8f8; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; line-height: 1.4;">{{ debug_info }}</pre>
+                                <p><strong>نکته:</strong> این اطلاعات برای debug است. لطفاً برای حل مشکل از آن استفاده کنید.</p>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="row">
+                    <div class="col12">
+                        <div class="help-block help-info">
+                            <p>برای ارسال درخواست به سرور سازمان بورس، روی دکمه "ارسال درخواست" کلیک کنید.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- اطلاعات درخواست -->
+                <div class="row">
+                    <div class="col6">
+                        <div class="card">
+                            <h3>جزئیات درخواست</h3>
+                            <table class="listing">
+                                <tr>
+                                    <td><strong>گروه اصلی:</strong></td>
+                                    <td>{{ scroll_request.main_category.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>گروه:</strong></td>
+                                    <td>{{ scroll_request.category.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>زیرگروه:</strong></td>
+                                    <td>{{ scroll_request.subcategory.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>تاریخ شروع:</strong></td>
+                                    <td>{{ scroll_request.start_date_shamsi }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>تاریخ پایان:</strong></td>
+                                    <td>{{ scroll_request.end_date_shamsi }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>مواجهه با تکراری:</strong></td>
+                                    <td>{{ scroll_request.get_duplicate_handling_display }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ذخیره خودکار:</strong></td>
+                                    <td>{% if scroll_request.auto_save %}بله{% else %}خیر{% endif %}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="col6">
+                        <div class="card">
+                            <h3>Payload ارسالی</h3>
+                            <pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; direction: ltr; text-align: left;">{{ scroll_request.get_payload|safe }}</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- وضعیت درخواست -->
+                <div class="row">
+                    <div class="col12">
+                        <div class="card">
+                            <h3>وضعیت درخواست</h3>
+                            <div id="status-container" style="text-align: center; padding: 20px;">
+                                {% if scroll_request.status == 'pending' %}
+                                    <div class="help-block help-warning">
+                                        <p>درخواست آماده ارسال است</p>
+                                    </div>
+                                {% elif scroll_request.status == 'processing' %}
+                                    <div class="help-block help-info">
+                                        <p>در حال ارسال درخواست...</p>
+                                        <div class="loader"></div>
+                                    </div>
+                                {% elif scroll_request.status == 'failed' %}
+                                    <div class="help-block help-critical">
+                                        <p>خطا در ارسال درخواست:</p>
+                                        <p>{{ scroll_request.error_message }}</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- دکمه‌های عملیات -->
+                <footer class="footer">
+                    <div class="row">
+                        <div class="col">
+                            <div class="footer-actions">
+                                {% if scroll_request.status == 'pending' or scroll_request.status == 'failed' %}
+                                    <!-- فرم اصلی -->
+                                    <form method="post" action="{% url 'prices:scroll_time_send' scroll_request.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="send_request">
+                                        <button type="submit" class="button button-primary" id="send-button">
+                                            ارسال درخواست
+                                        </button>
+                                    </form>
+                                    
+                                    <!-- فرم تست -->
+                                    <form method="post" action="{% url 'prices:scroll_time_send' scroll_request.id %}" style="display: inline; margin-left: 10px;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="test">
+                                        <button type="submit" class="button button-secondary" style="background: orange;">
+                                            تست ارتباط
+                                        </button>
+                                    </form>
+                                {% endif %}
+                                
+                                <a href="{% url 'prices:scroll_time_create' %}" class="button button-secondary">
+                                    بازگشت
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
+    <!-- JavaScript حذف شده برای جلوگیری از تداخل -->
+{% endblock %}

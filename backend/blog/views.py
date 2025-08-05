@@ -1,4 +1,24 @@
-# Create your views here.
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
+from django.http import JsonResponse
+from .models import ScrollTimePage
+
+
+def scroll_time_save_data(request, page_id):
+    """ذخیره داده‌های scroll-time از API"""
+    page = get_object_or_404(ScrollTimePage, id=page_id)
+    
+    if request.method == 'POST':
+        success, message = page.save_data_from_api()
+        
+        if success:
+            messages.success(request, message)
+        else:
+            messages.error(request, message)
+            
+        return redirect('wagtailadmin_pages:edit', page_id)
+    
+    return JsonResponse({'error': 'فقط درخواست POST مجاز است'}, status=405)
 
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render

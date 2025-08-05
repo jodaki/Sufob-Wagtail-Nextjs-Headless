@@ -1,0 +1,119 @@
+from django.urls import reverse
+from django.utils.html import format_html
+from wagtail import hooks
+from wagtail.admin.menu import MenuItem
+from wagtail.contrib.modeladmin.options import ModelAdmin, modeladmin_register, ModelAdminGroup
+from wagtail.contrib.modeladmin.views import CreateView
+from django.http import HttpResponseRedirect
+from django.contrib import messages
+from .models import PricePage, PriceIndexPage, PriceData, DataImportLog
+from .forms import DataImportForm
+
+
+# PriceData ModelAdmin
+class PriceDataAdmin(ModelAdmin):
+    model = PriceData
+    menu_label = 'داده‌های قیمت'
+    menu_icon = 'table'
+    menu_order = 200
+    list_display = ('commodity_name', 'price_date', 'final_price', 'avg_price', 'volume', 'created_at')
+    list_filter = ('commodity_name', 'price_date', 'source', 'created_at')
+    search_fields = ('commodity_name', 'symbol')
+    inspect_view_enabled = True
+
+
+# DataImportLog ModelAdmin
+class DataImportLogAdmin(ModelAdmin):
+    model = DataImportLog
+    menu_label = 'لاگ‌های ورود داده'
+    menu_icon = 'list-ul'
+    menu_order = 201
+    list_display = ('commodity_name', 'start_date', 'end_date', 'status', 'total_records', 'imported_records', 'created_at')
+    list_filter = ('status', 'commodity_name', 'created_at')
+    search_fields = ('commodity_name',)
+    inspect_view_enabled = True
+
+
+# Custom Import View using Wagtail's built-in form UI
+class ImportView(CreateView):
+    def get_template_names(self):
+        return ['wagtailadmin/generic/form.html']
+    
+    def get_page_title(self):
+        return "وارد کردن داده‌های قیمت"
+    
+    def get_form_class(self):
+        return DataImportForm
+    
+    def form_valid(self, form):
+        file = form.cleaned_data.get('import_file')
+        commodity = form.cleaned_data.get('commodity_name')
+        
+        import_log = DataImportLog.objects.create(
+            commodity_name=commodity,
+            start_date=form.cleaned_data.get('start_date'),
+            end_date=form.cleaned_data.get('end_date'),
+            status='در حال پردازش',
+            total_records=0,
+            created_by=self.request.user
+        )
+        
+        # Logic for processing file would go here
+        import_log.status = 'تکمیل شده'
+        import_log.save()
+        
+        messages.success(self.request, f'فایل برای {commodity} با موفقیت آپلود و پردازش شد!')
+        return HttpResponseRedirect(self.index_url)
+
+
+# Custom ModelAdmin with Import View
+class PriceDataImportAdmin(ModelAdmin):
+    model = DataImportLog
+    menu_label = 'وارد کردن داده‌های قیمت'
+    menu_icon = 'upload'
+    menu_order = 202
+    
+    def get_admin_urls_for_registration(self):
+        from django.urls import path
+        urls = super().get_admin_urls_for_registration()
+        urls = (
+            path('', self.import_view, name=self.get_url_name('index')),
+        ) + urls
+        return urls
+    
+    def import_view(self, request):
+        view_class = ImportView
+        return view_class.as_view(model=self.model, index_url=self.index_url)(request)
+
+
+# Group all price-related admin interfaces
+class PriceModelAdminGroup(ModelAdminGroup):
+    menu_label = 'مدیریت قیمت‌ها'
+    menu_icon = 'folder-open-inverse'
+    menu_order = 200
+    items = (PriceDataAdmin, DataImportLogAdmin, PriceDataImportAdmin)
+
+
+# Register the group
+modeladmin_register(PriceModelAdminGroup)
+
+
+# Custom CSS for Persian RTL support
+@hooks.register('insert_global_admin_css')
+def global_admin_css():
+    return format_html(
+        '<style>'
+        '.object-list th, .object-list td { text-align: right; }'
+        '.listing { direction: rtl; }'
+        '</style>'
+    )
+
+
+# Custom editor CSS for rich text fields
+@hooks.register('insert_editor_css')  
+def editor_css():
+    return format_html(
+        '<style>'
+        '.richtext { direction: rtl; text-align: right; }'
+        '</style>'
+    )

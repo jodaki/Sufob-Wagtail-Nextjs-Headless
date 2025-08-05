@@ -1,7 +1,108 @@
 from django import forms
 from django.core.exceptions import ValidationError
-from .models import PriceData
+from .models import PriceData, MainCategory, Category, SubCategory, ScrollTimeRequest
 from datetime import date, timedelta
+import re
+
+
+class ScrollTimeRequestForm(forms.ModelForm):
+    """فرم درخواست Scroll Time"""
+    
+    # فیلدهای تاریخ شمسی
+    start_date_shamsi = forms.CharField(
+        max_length=10,
+        label="تاریخ شروع (شمسی)",
+        help_text="فرمت: 1404/5/11",
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': '1404/5/11',
+            'pattern': r'\d{4}/\d{1,2}/\d{1,2}'
+        })
+    )
+    
+    end_date_shamsi = forms.CharField(
+        max_length=10,
+        label="تاریخ پایان (شمسی)",
+        help_text="فرمت: 1404/5/14",
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': '1404/5/14',
+            'pattern': r'\d{4}/\d{1,2}/\d{1,2}'
+        })
+    )
+    
+    class Meta:
+        model = ScrollTimeRequest
+        fields = [
+            'main_category', 'category', 'subcategory',
+            'start_date_shamsi', 'end_date_shamsi',
+            'duplicate_handling', 'auto_save'
+        ]
+        widgets = {
+            'main_category': forms.Select(attrs={
+                'class': 'form-control',
+                'onchange': 'updateCategories(this.value)'
+            }),
+            'category': forms.Select(attrs={
+                'class': 'form-control',
+                'onchange': 'updateSubCategories(this.value)'
+            }),
+            'subcategory': forms.Select(attrs={'class': 'form-control'}),
+            'duplicate_handling': forms.Select(attrs={'class': 'form-control'}),
+            'auto_save': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # فیلتر کردن گزینه‌های فعال
+        self.fields['main_category'].queryset = MainCategory.objects.filter(is_active=True)
+        self.fields['category'].queryset = Category.objects.filter(is_active=True)
+        self.fields['subcategory'].queryset = SubCategory.objects.filter(is_active=True)
+        
+        # اگر در حالت ویرایش هستیم، فیلترها را به‌روزرسانی کنیم
+        if self.instance and self.instance.pk:
+            if self.instance.main_category:
+                self.fields['category'].queryset = Category.objects.filter(
+                    main_category=self.instance.main_category, is_active=True
+                )
+            if self.instance.category:
+                self.fields['subcategory'].queryset = SubCategory.objects.filter(
+                    category=self.instance.category, is_active=True
+                )
+    
+    def clean_start_date_shamsi(self):
+        """اعتبارسنجی تاریخ شروع شمسی"""
+        date_str = self.cleaned_data['start_date_shamsi']
+        if not re.match(r'^\d{4}/\d{1,2}/\d{1,2}$', date_str):
+            raise ValidationError('فرمت تاریخ باید به صورت 1404/5/11 باشد')
+        return date_str
+    
+    def clean_end_date_shamsi(self):
+        """اعتبارسنجی تاریخ پایان شمسی"""
+        date_str = self.cleaned_data['end_date_shamsi']
+        if not re.match(r'^\d{4}/\d{1,2}/\d{1,2}$', date_str):
+            raise ValidationError('فرمت تاریخ باید به صورت 1404/5/14 باشد')
+        return date_str
+    
+    def clean(self):
+        """اعتبارسنجی کلی فرم"""
+        cleaned_data = super().clean()
+        main_category = cleaned_data.get('main_category')
+        category = cleaned_data.get('category')
+        subcategory = cleaned_data.get('subcategory')
+        
+        # بررسی ارتباط دسته‌بندی‌ها
+        if category and main_category:
+            if category.main_category != main_category:
+                raise ValidationError('گروه انتخاب شده با گروه اصلی مطابقت ندارد')
+        
+        if subcategory and category:
+            if subcategory.category != category:
+                raise ValidationError('زیرگروه انتخاب شده با گروه مطابقت ندارد')
+        
+        return cleaned_data
+
 
 class DataImportForm(forms.Form):
     """فرم وارد کردن داده‌های قیمت"""

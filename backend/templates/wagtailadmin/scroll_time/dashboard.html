@@ -1,0 +1,171 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+
+{% block titletag %}داشبورد Scroll Time{% endblock %}
+
+{% block content %}
+    <header class="header--merged">
+        <div class="row">
+            <div class="left">
+                <h1 class="left header-title">داشبورد Scroll Time</h1>
+            </div>
+            <div class="right">
+                <div class="col">
+                    <a href="/sufobadmin/scroll-time/quick-create/" class="button button-primary bicolor icon icon-plus">
+                        درخواست جدید
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="nice-padding">
+        <!-- آمار کلی -->
+        <div class="row">
+            <div class="col3">
+                <div class="panel summary-single">
+                    <h2>{{ stats.total_requests|default:"0" }}</h2>
+                    <p>کل درخواست‌ها</p>
+                </div>
+            </div>
+            
+            <div class="col3">
+                <div class="panel summary-single">
+                    <h2>{{ stats.completed_requests|default:"0" }}</h2>
+                    <p>تکمیل شده</p>
+                </div>
+            </div>
+            
+            <div class="col3">
+                <div class="panel summary-single">
+                    <h2>{{ stats.pending_requests|default:"0" }}</h2>
+                    <p>در انتظار</p>
+                </div>
+            </div>
+            
+            <div class="col3">
+                <div class="panel summary-single">
+                    <h2>{{ stats.failed_requests|default:"0" }}</h2>
+                    <p>ناموفق</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- اقدامات سریع -->
+        <div class="row">
+            <div class="col12">
+                <div class="panel">
+                    <h2>اقدامات سریع</h2>
+                    <ul class="actions">
+                        <li>
+                            <a href="/sufobadmin/scroll-time/quick-create/" class="button">
+                                <i class="icon icon-plus"></i>
+                                ایجاد درخواست جدید
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/sufobadmin/prices/scrolltimerequest/" class="button">
+                                <i class="icon icon-list-ul"></i>
+                                مشاهده همه درخواست‌ها
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- آخرین درخواست‌ها -->
+        {% if recent_requests %}
+        <div class="row">
+            <div class="col12">
+                <div class="panel">
+                    <h2>آخرین درخواست‌ها</h2>
+                    <table class="listing">
+                        <thead>
+                            <tr>
+                                <th>شناسه</th>
+                                <th>گروه اصلی</th>
+                                <th>وضعیت</th>
+                                <th>تاریخ ایجاد</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for request in recent_requests %}
+                            <tr>
+                                <td>{{ request.id }}</td>
+                                <td>{{ request.main_category.name|default:"-" }}</td>
+                                <td>
+                                    {% if request.status == 'completed' %}
+                                        <span class="status-tag primary">تکمیل شده</span>
+                                    {% elif request.status == 'pending' %}
+                                        <span class="status-tag">در انتظار</span>
+                                    {% elif request.status == 'processing' %}
+                                        <span class="status-tag warning">در حال پردازش</span>
+                                    {% elif request.status == 'preview' %}
+                                        <span class="status-tag info">آماده پیش‌نمایش</span>
+                                    {% else %}
+                                        <span class="status-tag negative">ناموفق</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ request.created_at|date:"Y/m/d H:i" }}</td>
+                                <td>
+                                    {% if request.status == 'pending' %}
+                                        <a href="/sufobadmin/scroll-time/{{ request.id }}/send/" class="button button-small">ارسال</a>
+                                    {% elif request.status == 'preview' %}
+                                        <a href="/sufobadmin/scroll-time/{{ request.id }}/preview/" class="button button-small">پیش‌نمایش</a>
+                                    {% elif request.status == 'completed' %}
+                                        <a href="/sufobadmin/scroll-time/{{ request.id }}/completed/" class="button button-small">گزارش</a>
+                                    {% elif request.status == 'failed' %}
+                                        <a href="/sufobadmin/scroll-time/{{ request.id }}/send/" class="button button-small">تلاش مجدد</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <style>
+        .summary-single {
+            text-align: center;
+            padding: 20px;
+        }
+        .summary-single h2 {
+            font-size: 2.5em;
+            margin: 0;
+            color: #007cba;
+        }
+        .summary-single p {
+            margin: 10px 0 0 0;
+            color: #666;
+        }
+        .actions {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            gap: 10px;
+        }
+        .actions li {
+            margin: 0;
+        }
+        .status-tag {
+            padding: 4px 8px;
+            border-radius: 3px;
+            color: white;
+            font-size: 12px;
+        }
+        .status-tag.primary { background-color: #007cba; }
+        .status-tag.negative { background-color: #e74c3c; }
+        .status-tag.warning { background-color: #f39c12; }
+        .status-tag.info { background-color: #17a2b8; }
+        .status-tag:not(.primary):not(.negative):not(.warning):not(.info) { background-color: #95a5a6; }
+        .listing { direction: rtl; }
+        .listing th, .listing td { text-align: right; }
+    </style>
+{% endblock %}

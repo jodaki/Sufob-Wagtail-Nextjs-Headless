@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "transactions",
     "sufob_settings",
     "sufob_users",
+    "data_management",  # 🧩 مدیریت داده‌ها
     "wagtailmarkdown",
     "rest_framework",
     "sufob_comments",

@@ -1,0 +1,245 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+{% load wagtailadmin_tags %}
+
+{% block titletag %}{{ page_title }}{% endblock %}
+
+{% block content %}
+    <header class="header">
+        <div class="row">
+            <div class="left">
+                <div class="col">
+                    <h1 class="header-title">{{ page_title }}</h1>
+                    {% if page_subtitle %}
+                        <p class="header-subtitle">{{ page_subtitle }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="content-wrapper">
+        <div class="content">
+            <div class="nice-padding">
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="messages">
+                            <div class="message message-{{ message.tags }}">
+                                {{ message }}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="row">
+                    <div class="col12">
+                        <div class="help-block help-info">
+                            <p>برای ایجاد درخواست جدید Scroll Time، موارد زیر را تکمیل کنید:</p>
+                            <ul>
+                                <li>دسته‌بندی مورد نظر را انتخاب کنید</li>
+                                <li>بازه زمانی را با فرمت شمسی وارد کنید</li>
+                                <li>نحوه مواجهه با داده‌های تکراری را مشخص کنید</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" class="form-horizontal">
+                    {% csrf_token %}
+                    
+                    <fieldset>
+                        <legend>انتخاب دسته‌بندی</legend>
+                        
+                        <div class="field">
+                            <label for="{{ form.main_category.id_for_label }}">{{ form.main_category.label }}</label>
+                            <div class="field-content">
+                                {{ form.main_category }}
+                                {% if form.main_category.help_text %}
+                                    <p class="help">{{ form.main_category.help_text }}</p>
+                                {% endif %}
+                                {% if form.main_category.errors %}
+                                    <p class="error-message">{{ form.main_category.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label for="{{ form.category.id_for_label }}">{{ form.category.label }}</label>
+                            <div class="field-content">
+                                {{ form.category }}
+                                {% if form.category.help_text %}
+                                    <p class="help">{{ form.category.help_text }}</p>
+                                {% endif %}
+                                {% if form.category.errors %}
+                                    <p class="error-message">{{ form.category.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label for="{{ form.subcategory.id_for_label }}">{{ form.subcategory.label }}</label>
+                            <div class="field-content">
+                                {{ form.subcategory }}
+                                {% if form.subcategory.help_text %}
+                                    <p class="help">{{ form.subcategory.help_text }}</p>
+                                {% endif %}
+                                {% if form.subcategory.errors %}
+                                    <p class="error-message">{{ form.subcategory.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>بازه زمانی</legend>
+                        
+                        <div class="field">
+                            <label for="{{ form.start_date_shamsi.id_for_label }}">{{ form.start_date_shamsi.label }}</label>
+                            <div class="field-content">
+                                {{ form.start_date_shamsi }}
+                                {% if form.start_date_shamsi.help_text %}
+                                    <p class="help">{{ form.start_date_shamsi.help_text }}</p>
+                                {% endif %}
+                                {% if form.start_date_shamsi.errors %}
+                                    <p class="error-message">{{ form.start_date_shamsi.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label for="{{ form.end_date_shamsi.id_for_label }}">{{ form.end_date_shamsi.label }}</label>
+                            <div class="field-content">
+                                {{ form.end_date_shamsi }}
+                                {% if form.end_date_shamsi.help_text %}
+                                    <p class="help">{{ form.end_date_shamsi.help_text }}</p>
+                                {% endif %}
+                                {% if form.end_date_shamsi.errors %}
+                                    <p class="error-message">{{ form.end_date_shamsi.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>تنظیمات پردازش</legend>
+                        
+                        <div class="field">
+                            <label for="{{ form.duplicate_handling.id_for_label }}">{{ form.duplicate_handling.label }}</label>
+                            <div class="field-content">
+                                {{ form.duplicate_handling }}
+                                {% if form.duplicate_handling.help_text %}
+                                    <p class="help">{{ form.duplicate_handling.help_text }}</p>
+                                {% endif %}
+                                {% if form.duplicate_handling.errors %}
+                                    <p class="error-message">{{ form.duplicate_handling.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="field boolean_field">
+                            <div class="field-content">
+                                {{ form.auto_save }}
+                                <label for="{{ form.auto_save.id_for_label }}">{{ form.auto_save.label }}</label>
+                                {% if form.auto_save.help_text %}
+                                    <p class="help">{{ form.auto_save.help_text }}</p>
+                                {% endif %}
+                                {% if form.auto_save.errors %}
+                                    <p class="error-message">{{ form.auto_save.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    {% if form.non_field_errors %}
+                        <div class="messages">
+                            <div class="message message-error">
+                                {{ form.non_field_errors.0 }}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <footer class="footer">
+                        <div class="row">
+                            <div class="col">
+                                <div class="footer-actions">
+                                    <button type="submit" class="button button-primary">ایجاد درخواست</button>
+                                    <a href="{% url 'wagtailadmin_home' %}" class="button button-secondary">انصراف</a>
+                                </div>
+                            </div>
+                        </div>
+                    </footer>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // بروزرسانی گروه‌ها بر اساس گروه اصلی
+            function updateCategories(mainCategoryId) {
+                const categorySelect = document.getElementById('id_category');
+                const subcategorySelect = document.getElementById('id_subcategory');
+                
+                // پاک کردن گزینه‌های قبلی
+                categorySelect.innerHTML = '<option value="">---------</option>';
+                subcategorySelect.innerHTML = '<option value="">---------</option>';
+                
+                if (mainCategoryId) {
+                    fetch(`{% url 'prices:ajax_get_categories' %}?main_category_id=${mainCategoryId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                data.categories.forEach(category => {
+                                    const option = document.createElement('option');
+                                    option.value = category.id;
+                                    option.textContent = category.name;
+                                    categorySelect.appendChild(option);
+                                });
+                            }
+                        })
+                        .catch(error => console.error('Error:', error));
+                }
+            }
+            
+            // بروزرسانی زیرگروه‌ها بر اساس گروه
+            function updateSubCategories(categoryId) {
+                const subcategorySelect = document.getElementById('id_subcategory');
+                
+                // پاک کردن گزینه‌های قبلی
+                subcategorySelect.innerHTML = '<option value="">---------</option>';
+                
+                if (categoryId) {
+                    fetch(`{% url 'prices:ajax_get_subcategories' %}?category_id=${categoryId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                data.subcategories.forEach(subcategory => {
+                                    const option = document.createElement('option');
+                                    option.value = subcategory.id;
+                                    option.textContent = subcategory.name;
+                                    subcategorySelect.appendChild(option);
+                                });
+                            }
+                        })
+                        .catch(error => console.error('Error:', error));
+                }
+            }
+            
+            // اتصال event listener ها
+            document.getElementById('id_main_category').addEventListener('change', function() {
+                updateCategories(this.value);
+            });
+            
+            document.getElementById('id_category').addEventListener('change', function() {
+                updateSubCategories(this.value);
+            });
+            
+            // در صورت وجود مقادیر اولیه، بروزرسانی کن
+            const mainCategoryValue = document.getElementById('id_main_category').value;
+            if (mainCategoryValue) {
+                updateCategories(mainCategoryValue);
+            }
+        });
+    </script>
+{% endblock %}

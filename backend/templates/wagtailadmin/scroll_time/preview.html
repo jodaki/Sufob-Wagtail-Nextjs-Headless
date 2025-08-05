@@ -1,0 +1,271 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+{% load wagtailadmin_tags %}
+
+{% block titletag %}{{ page_title }}{% endblock %}
+
+{% block content %}
+    <header class="header">
+        <div class="row">
+            <div class="left">
+                <div class="col">
+                    <h1 class="header-title">{{ page_title }}</h1>
+                    {% if page_subtitle %}
+                        <p class="header-subtitle">{{ page_subtitle }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="content-wrapper">
+        <div class="content">
+            <div class="nice-padding">
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="messages">
+                            <div class="message message-{{ message.tags }}">
+                                {{ message }}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="row">
+                    <div class="col12">
+                        <div class="help-block help-info">
+                            <p>داده‌ها با موفقیت از سرور بورس دریافت شدند. لطفاً نمونه رکوردها را بررسی کنید و در صورت تأیید، آن‌ها را ذخیره کنید.</p>
+                        </div>
+                    </div>
+                </div>
+
+                {% if preview_data.success %}
+                    <!-- آمار کلی -->
+                    <div class="row">
+                        <div class="col6">
+                            <div class="card">
+                                <h3>آمار دریافت شده</h3>
+                                <table class="listing">
+                                    <tr>
+                                        <td><strong>تعداد کل رکوردها:</strong></td>
+                                        <td>{{ preview_data.stats.total_records }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>دسته‌بندی:</strong></td>
+                                        <td>{{ preview_data.stats.categories }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>زیرگروه:</strong></td>
+                                        <td>{{ preview_data.stats.subcategories }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>بازه زمانی:</strong></td>
+                                        <td>{{ preview_data.stats.date_range }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>تعداد نمونه نمایش:</strong></td>
+                                        <td>{{ preview_data.stats.sample_count }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="col6">
+                            <div class="card">
+                                <h3>تنظیمات ذخیره</h3>
+                                <table class="listing">
+                                    <tr>
+                                        <td><strong>مواجهه با تکراری:</strong></td>
+                                        <td>{{ scroll_request.get_duplicate_handling_display }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>ذخیره خودکار:</strong></td>
+                                        <td>{% if scroll_request.auto_save %}فعال{% else %}غیرفعال{% endif %}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>وضعیت درخواست:</strong></td>
+                                        <td>{{ scroll_request.get_status_display }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- نمونه رکوردها -->
+                    <div class="row">
+                        <div class="col12">
+                            <div class="card">
+                                <h3>نمونه رکوردهای دریافت شده</h3>
+                                
+                                {% if preview_data.sample_records %}
+                                    <div class="table-container" style="overflow-x: auto;">
+                                        <table class="listing full-width">
+                                            <thead>
+                                                <tr>
+                                                    <th>ردیف</th>
+                                                    {% for key in preview_data.sample_records.0.keys %}
+                                                        <th>{{ key }}</th>
+                                                    {% endfor %}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for record in preview_data.sample_records %}
+                                                    <tr>
+                                                        <td>{{ forloop.counter }}</td>
+                                                        {% for value in record.values %}
+                                                            <td>{{ value|default:"—" }}</td>
+                                                        {% endfor %}
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    
+                                    {% if preview_data.stats.total_records > preview_data.stats.sample_count %}
+                                        <p class="help" style="margin-top: 15px;">
+                                            <strong>توجه:</strong> فقط {{ preview_data.stats.sample_count }} رکورد اول نمایش داده شده است. 
+                                            در مجموع {{ preview_data.stats.total_records }} رکورد دریافت شده است.
+                                        </p>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="help-block help-warning">
+                                        <p>هیچ رکوردی برای نمایش وجود ندارد.</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Raw Data (قابل بسته شدن) -->
+                    <div class="row">
+                        <div class="col12">
+                            <div class="card">
+                                <details>
+                                    <summary style="cursor: pointer; font-weight: bold; padding: 10px 0;">
+                                        نمایش داده‌های خام JSON (کلیک کنید)
+                                    </summary>
+                                    <pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; max-height: 400px; overflow-y: auto; direction: ltr; text-align: left;">{{ scroll_request.response_data|safe }}</pre>
+                                </details>
+                            </div>
+                        </div>
+                    </div>
+
+                {% else %}
+                    <div class="help-block help-critical">
+                        <p>خطا در نمایش داده‌ها: {{ preview_data.error }}</p>
+                    </div>
+                {% endif %}
+
+                <!-- دکمه‌های عملیات -->
+                <footer class="footer">
+                    <div class="row">
+                        <div class="col">
+                            <div class="footer-actions">
+                                {% if preview_data.success %}
+                                    <form method="post" action="{% url 'prices:scroll_time_preview' scroll_request.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="save">
+                                        <button type="submit" class="button button-primary" id="save-button">
+                                            {% if scroll_request.auto_save %}
+                                                ذخیره خودکار داده‌ها
+                                            {% else %}
+                                                تأیید و ذخیره داده‌ها
+                                            {% endif %}
+                                        </button>
+                                    </form>
+                                    
+                                    <form method="post" action="{% url 'prices:scroll_time_preview' scroll_request.id %}" style="display: inline; margin-left: 10px;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="test_save">
+                                        <button type="submit" class="button button-secondary" style="background: orange;">
+                                            تست ذخیره
+                                        </button>
+                                    </form>
+                                    
+                                    <form method="post" action="{% url 'prices:scroll_time_preview' scroll_request.id %}" style="display: inline; margin-left: 10px;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="cancel">
+                                        <button type="submit" class="button button-secondary" 
+                                                onclick="return confirm('آیا مطمئن هستید؟ داده‌های دریافت شده حذف خواهند شد.')">
+                                            لغو و بازگشت
+                                        </button>
+                                    </form>
+                                {% endif %}
+                                
+                                <a href="{% url 'prices:scroll_time_create' %}" class="button button-secondary">
+                                    درخواست جدید
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .table-container {
+            margin: 15px 0;
+        }
+        
+        .listing th,
+        .listing td {
+            text-align: right;
+            vertical-align: top;
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .listing th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        .listing tbody tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        details summary {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        
+        details[open] summary {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            border-bottom: none;
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // غیرفعال کردن دکمه بعد از کلیک
+            const saveButton = document.getElementById('save-button');
+            if (saveButton) {
+                saveButton.addEventListener('click', function() {
+                    this.disabled = true;
+                    this.textContent = 'در حال ذخیره...';
+                });
+            }
+        });
+    </script>
+{% endblock %}

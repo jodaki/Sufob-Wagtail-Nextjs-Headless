@@ -1,0 +1,70 @@
+{% extends "wagtailadmin/base.html" %}
+{% block content %}
+<div class="nice-padding">
+    <h1>{{ title }}</h1>
+    
+    <div class="row">
+        <div class="col8">
+            <div class="white-box">
+                <h2>آپلود فایل داده‌های قیمت</h2>
+                
+                <form method="post" enctype="multipart/form-data" class="form">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label for="import_file">انتخاب فایل:</label>
+                        <input type="file" name="import_file" id="import_file" accept=".csv,.xlsx,.xls" required>
+                        <p class="help">فرمت‌های مجاز: CSV, Excel (.xlsx, .xls)</p>
+                    </div>
+                    
+                    <div class="field">
+                        <label for="commodity_name">نام کالا:</label>
+                        <input type="text" name="commodity_name" id="commodity_name" required>
+                    </div>
+                    
+                    <div class="actions">
+                        <button type="submit" class="button button-primary">آپلود و پردازش</button>
+                        <a href="{% url 'wagtailadmin_home' %}" class="button button-secondary">انصراف</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="col4">
+            <div class="white-box">
+                <h2>آمار کلی</h2>
+                <ul>
+                    <li>تعداد کل رکوردهای قیمت: {{ total_price_records }}</li>
+                    <li>آخرین import ها:</li>
+                </ul>
+                
+                {% if recent_imports %}
+                <table class="listing">
+                    <thead>
+                        <tr>
+                            <th>کالا</th>
+                            <th>وضعیت</th>
+                            <th>تاریخ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for import_log in recent_imports %}
+                        <tr>
+                            <td>{{ import_log.commodity_name }}</td>
+                            <td>
+                                <span class="status-tag {% if import_log.status == 'completed' %}primary{% else %}warning{% endif %}">
+                                    {{ import_log.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ import_log.created_at|date:"Y/m/d H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p>هیچ رکورد import قبلی وجود ندارد.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

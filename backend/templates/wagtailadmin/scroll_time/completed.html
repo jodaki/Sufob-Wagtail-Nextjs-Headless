@@ -1,0 +1,334 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+{% load wagtailadmin_tags %}
+
+{% block titletag %}{{ page_title }}{% endblock %}
+
+{% block content %}
+    <header class="header">
+        <div class="row">
+            <div class="left">
+                <div class="col">
+                    <h1 class="header-title">{{ page_title }}</h1>
+                    {% if page_subtitle %}
+                        <p class="header-subtitle">{{ page_subtitle }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="content-wrapper">
+        <div class="content">
+            <div class="nice-padding">
+                
+                <div class="row">
+                    <div class="col12">
+                        <div class="help-block help-success">
+                            <p>✅ درخواست Scroll Time با موفقیت تکمیل شد!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- خلاصه عملکرد -->
+                <div class="row">
+                    <div class="col6">
+                        <div class="card success-card">
+                            <h3>📊 گزارش عملکرد</h3>
+                            <table class="listing">
+                                <tr>
+                                    <td><strong>وضعیت نهایی:</strong></td>
+                                    <td>
+                                        <span class="status-badge success">
+                                            {{ scroll_request.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>تعداد کل رکوردها:</strong></td>
+                                    <td>{{ scroll_request.total_records }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>رکوردهای پردازش شده:</strong></td>
+                                    <td>{{ scroll_request.processed_records }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>درصد موفقیت:</strong></td>
+                                    <td>
+                                        {% if scroll_request.total_records > 0 %}
+                                            {% widthratio scroll_request.processed_records scroll_request.total_records 100 %}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>زمان تکمیل:</strong></td>
+                                    <td>{{ scroll_request.updated_at|date:"Y/m/d H:i" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="col6">
+                        <div class="card info-card">
+                            <h3>📋 جزئیات درخواست</h3>
+                            <table class="listing">
+                                <tr>
+                                    <td><strong>شماره درخواست:</strong></td>
+                                    <td>#{{ scroll_request.id }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>دسته‌بندی:</strong></td>
+                                    <td>{{ scroll_request.main_category.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>گروه:</strong></td>
+                                    <td>{{ scroll_request.category.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>زیرگروه:</strong></td>
+                                    <td>{{ scroll_request.subcategory.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>بازه زمانی:</strong></td>
+                                    <td>{{ scroll_request.start_date_shamsi }} تا {{ scroll_request.end_date_shamsi }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ایجاد شده توسط:</strong></td>
+                                    <td>{{ scroll_request.created_by|default:"سیستم" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- اقدامات بعدی -->
+                <div class="row">
+                    <div class="col12">
+                        <div class="card action-card">
+                            <h3>🎯 اقدامات بعدی</h3>
+                            <div class="action-grid">
+                                <div class="action-item">
+                                    <h4>مشاهده داده‌ها</h4>
+                                    <p>داده‌های ذخیره شده را در بخش "داده‌های قیمت" مشاهده کنید</p>
+                                    <a href="#" class="button button-primary">مشاهده داده‌ها</a>
+                                </div>
+                                
+                                <div class="action-item">
+                                    <h4>درخواست جدید</h4>
+                                    <p>درخواست Scroll Time جدید برای دسته‌بندی‌های دیگر ایجاد کنید</p>
+                                    <a href="{% url 'prices:scroll_time_create' %}" class="button button-secondary">درخواست جدید</a>
+                                </div>
+                                
+                                <div class="action-item">
+                                    <h4>مشاهده لاگ‌ها</h4>
+                                    <p>جزئیات عملیات وارد کردن داده را در بخش لاگ‌ها ببینید</p>
+                                    <a href="#" class="button button-secondary">مشاهده لاگ‌ها</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- خطاها (در صورت وجود) -->
+                {% if scroll_request.error_message %}
+                    <div class="row">
+                        <div class="col12">
+                            <div class="card error-card">
+                                <h3>⚠️ پیام‌های خطا</h3>
+                                <div class="error-content">
+                                    {{ scroll_request.error_message }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Timeline عملیات -->
+                <div class="row">
+                    <div class="col12">
+                        <div class="card timeline-card">
+                            <h3>📅 Timeline عملیات</h3>
+                            <div class="timeline">
+                                <div class="timeline-item completed">
+                                    <div class="timeline-marker"></div>
+                                    <div class="timeline-content">
+                                        <h4>ایجاد درخواست</h4>
+                                        <p>{{ scroll_request.created_at|date:"Y/m/d H:i" }}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="timeline-item completed">
+                                    <div class="timeline-marker"></div>
+                                    <div class="timeline-content">
+                                        <h4>ارسال به سرور بورس</h4>
+                                        <p>درخواست با موفقیت ارسال شد</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="timeline-item completed">
+                                    <div class="timeline-marker"></div>
+                                    <div class="timeline-content">
+                                        <h4>دریافت و پردازش داده‌ها</h4>
+                                        <p>{{ scroll_request.total_records }} رکورد دریافت شد</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="timeline-item completed">
+                                    <div class="timeline-marker"></div>
+                                    <div class="timeline-content">
+                                        <h4>ذخیره در پایگاه داده</h4>
+                                        <p>{{ scroll_request.updated_at|date:"Y/m/d H:i" }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- دکمه‌های ناوبری -->
+                <footer class="footer">
+                    <div class="row">
+                        <div class="col">
+                            <div class="footer-actions">
+                                <a href="{% url 'prices:scroll_time_create' %}" class="button button-primary">
+                                    درخواست جدید
+                                </a>
+                                
+                                <a href="{% url 'wagtailadmin_home' %}" class="button button-secondary">
+                                    بازگشت به داشبورد
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .success-card {
+            border-left: 4px solid #28a745;
+        }
+        
+        .info-card {
+            border-left: 4px solid #007bff;
+        }
+        
+        .action-card {
+            border-left: 4px solid #ffc107;
+        }
+        
+        .error-card {
+            border-left: 4px solid #dc3545;
+        }
+        
+        .timeline-card {
+            border-left: 4px solid #6c757d;
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-badge.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+        
+        .action-item {
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .action-item h4 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .action-item p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #dee2e6;
+        }
+        
+        .timeline-item {
+            position: relative;
+            margin-bottom: 30px;
+        }
+        
+        .timeline-marker {
+            position: absolute;
+            left: -23px;
+            top: 5px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #28a745;
+            border: 2px solid white;
+            box-shadow: 0 0 0 2px #28a745;
+        }
+        
+        .timeline-content h4 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+        
+        .timeline-content p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .error-content {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+    </style>
+{% endblock %}

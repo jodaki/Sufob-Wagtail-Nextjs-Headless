@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from wagtail.models import Site, Page
+from wagtail.images.models import Image as WagtailImage
 from home.models import HomePage
 from blog.models import BlogPageIndex, BlogPage, BlogCategory, BlogTag
 from sufob_comments.models import Comment
@@ -326,14 +327,40 @@ API های حرفه‌ای بسازید!''',
             users = User.objects.all()
             owner = users.first() if users.exists() else None
             
+            # Get or create default blog images
+            default_images = []
+            image_files = ['default-blog-image.max-165x165.jpg', 'true-detective.original.jpg', 'true-detective_5jXV2LF.original.jpg']
+            
+            for image_file in image_files:
+                try:
+                    img = WagtailImage.objects.filter(title__icontains=image_file.split('.')[0]).first()
+                    if img:
+                        default_images.append(img)
+                except:
+                    pass
+            
+            # If no images found, try to get any available image
+            if not default_images:
+                default_images = list(WagtailImage.objects.all()[:3])
+            
+            # If still no images, create a simple one
+            if not default_images:
+                # For now, we'll skip image requirement - this needs to be handled properly
+                self.stdout.write(self.style.WARNING('No images found for blog posts. You may need to upload images first.'))
+                return
+            
             for i, post_data in enumerate(blog_posts_data):
                 if not BlogPage.objects.filter(slug=post_data['slug']).exists():
+                    # Select image cyclically from available images
+                    selected_image = default_images[i % len(default_images)] if default_images else None
+                    
                     blog_page = BlogPage(
                         title=post_data['title'],
                         slug=post_data['slug'],
                         md_content=post_data['md_content'],
                         seo_title=post_data['title'],
                         search_description=post_data['search_description'],
+                        header_image=selected_image,
                         owner=owner
                     )
                     blog_index.add_child(instance=blog_page)

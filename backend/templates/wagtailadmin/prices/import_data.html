@@ -1,0 +1,83 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n static %}
+
+{% block titletag %}{{ title }}{% endblock %}
+
+{% block content %}
+    {% include "wagtailadmin/shared/header.html" with title=title icon="table" %}
+
+    <div class="nice-padding">
+        <div class="row">
+            <div class="col8">
+                <form action="{% url 'price_data_import' %}" method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <ul class="fields">
+                        {% for field in form %}
+                            <li>
+                                <div class="field char_field">
+                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% if field.help_text %}
+                                        <p class="help">{{ field.help_text }}</p>
+                                    {% endif %}
+                                    {% if field.errors %}
+                                        <p class="error-message">{{ field.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                        
+                        <li>
+                            <input type="submit" value="ارسال و وارد کردن داده‌ها" class="button" />
+                        </li>
+                    </ul>
+                </form>
+            </div>
+            
+            <div class="col4">
+                <div class="panel panel-info">
+                    <div class="panel-heading"><h3 class="panel-title">اطلاعات کلی</h3></div>
+                    <div class="panel-body">
+                        <p>تعداد کل رکوردها: {{ total_price_records }}</p>
+                        
+                        <h4>آخرین وارد کردن‌ها:</h4>
+                        <table class="listing">
+                            <thead>
+                                <tr>
+                                    <th>کالا</th>
+                                    <th>وضعیت</th>
+                                    <th>زمان</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in recent_imports %}
+                                    <tr>
+                                        <td>{{ log.commodity_name }}</td>
+                                        <td>{{ log.get_status_display }}</td>
+                                        <td>{{ log.created_at|date:"Y/m/d H:i" }}</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr><td colspan="3">هیچ رکورد وارد کردن داده‌ای وجود ندارد.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <div class="panel-heading"><h3 class="panel-title">راهنمای وارد کردن داده</h3></div>
+                    <div class="panel-body">
+                        <p>برای وارد کردن داده‌ها، لطفاً نوع کالا، تاریخ شروع و پایان را انتخاب کنید.</p>
+                        <p>در صورت وجود رکوردهای تکراری، می‌توانید یکی از روش‌های زیر را برای مدیریت آن‌ها انتخاب کنید:</p>
+                        <ul>
+                            <li>رد کردن رکوردهای تکراری</li>
+                            <li>جایگزینی رکوردهای تکراری</li>
+                            <li>بروزرسانی رکوردهای موجود</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,177 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+
+{% block titletag %}ایجاد درخواست Scroll Time جدید{% endblock %}
+
+{% block content %}
+    <header class="header--merged">
+        <div class="row">
+            <h1 class="left header-title">ایجاد درخواست Scroll Time جدید</h1>
+        </div>
+    </header>
+
+    <div class="nice-padding">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>اطلاعات درخواست</h2>
+                </div>
+                
+                <div class="panel-content">
+                    {% for field in form %}
+                        <div class="field">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            <div class="field-content">
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <p class="help">{{ field.help_text }}</p>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <p class="error-message">{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- دکمه‌های عمل -->
+            <footer class="footer">
+                <ul class="footer-actions">
+                    <li class="footer-actions-item">
+                        <button type="submit" class="button action-save button-longrunning">
+                            <i class="icon icon-spinner"></i>
+                            <em>ایجاد درخواست</em>
+                        </button>
+                    </li>
+                    <li class="footer-actions-item">
+                        <a href="/sufobadmin/scroll-time/dashboard/" class="button button-secondary">انصراف</a>
+                    </li>
+                </ul>
+            </footer>
+        </form>
+    </div>
+
+    <script>
+        // JavaScript برای بارگذاری دینامیک گروه‌ها و زیرگروه‌ها
+        document.addEventListener('DOMContentLoaded', function() {
+            const mainCategorySelect = document.getElementById('id_main_category');
+            const categorySelect = document.getElementById('id_category');
+            const subcategorySelect = document.getElementById('id_subcategory');
+
+            if (mainCategorySelect) {
+                mainCategorySelect.addEventListener('change', function() {
+                    const mainCategoryId = this.value;
+                    
+                    if (mainCategoryId) {
+                        categorySelect.disabled = false;
+                        categorySelect.innerHTML = '<option value="">در حال بارگذاری...</option>';
+                        
+                        // فراخوانی API برای دریافت گروه‌ها
+                        fetch(`/sufobadmin/scroll-time/ajax/categories/?main_category=${mainCategoryId}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                categorySelect.innerHTML = '<option value="">انتخاب کنید...</option>';
+                                if (data.success && data.categories) {
+                                    data.categories.forEach(cat => {
+                                        categorySelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('خطا در دریافت گروه‌ها:', error);
+                                categorySelect.innerHTML = '<option value="">خطا در بارگذاری</option>';
+                            });
+                    } else {
+                        categorySelect.disabled = true;
+                        categorySelect.innerHTML = '<option value="">ابتدا گروه اصلی را انتخاب کنید</option>';
+                        subcategorySelect.disabled = true;
+                        subcategorySelect.innerHTML = '<option value="">ابتدا گروه را انتخاب کنید</option>';
+                    }
+                });
+            }
+
+            if (categorySelect) {
+                categorySelect.addEventListener('change', function() {
+                    const categoryId = this.value;
+                    
+                    if (categoryId) {
+                        subcategorySelect.disabled = false;
+                        subcategorySelect.innerHTML = '<option value="">در حال بارگذاری...</option>';
+                        
+                        // فراخوانی API برای دریافت زیرگروه‌ها
+                        fetch(`/sufobadmin/scroll-time/ajax/subcategories/?category=${categoryId}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                subcategorySelect.innerHTML = '<option value="">انتخاب کنید...</option>';
+                                if (data.success && data.subcategories) {
+                                    data.subcategories.forEach(subcat => {
+                                        subcategorySelect.innerHTML += `<option value="${subcat.id}">${subcat.name}</option>`;
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('خطا در دریافت زیرگروه‌ها:', error);
+                                subcategorySelect.innerHTML = '<option value="">خطا در بارگذاری</option>';
+                            });
+                    } else {
+                        subcategorySelect.disabled = true;
+                        subcategorySelect.innerHTML = '<option value="">ابتدا گروه را انتخاب کنید</option>';
+                    }
+                });
+            }
+        });
+    </script>
+
+    <style>
+        .field {
+            margin-bottom: 20px;
+        }
+        
+        .field label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .field-content input,
+        .field-content select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        
+        .field-content select:disabled {
+            background-color: #f5f5f5;
+            color: #999;
+        }
+        
+        .help {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+        
+        .footer-actions {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .footer-actions-item {
+            margin: 0;
+        }
+    </style>
+{% endblock %}

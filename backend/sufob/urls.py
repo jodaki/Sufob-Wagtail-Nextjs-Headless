@@ -25,6 +25,7 @@ urlpatterns = [
     path("api/transactions/", api_transactions, name="api_transactions"),
     path("api/dailyinfo/", api_dailyinfo_list, name="api_dailyinfo"),
     path("api/commodities/", api_commodities, name="api_commodities"),
+    path("prices/", include("prices.urls")),
     path("view-api/update_view_count/<int:blog_page_id>/", update_view_count),
     path("comments/", include(sufob_comments_urls)),
     path("health-check/", health_check, name="health_check"),

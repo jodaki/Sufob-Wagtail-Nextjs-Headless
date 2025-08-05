@@ -139,7 +139,106 @@ class TaggedBlog(ItemBase):
     ]
 
 
-class BlogPage(HeadlessPreviewMixin, Page):
+from django.db import models
+from wagtail.models import Page
+from wagtail.fields import RichTextField
+from wagtail.admin.panels import FieldPanel
+from wagtail.search import index
+from data_management.models import AllData
+import requests
+import jdatetime
+from decimal import Decimal
+
+
+class ScrollTimePage(Page):
+    """صفحه برای دریافت و ذخیره داده‌های بورس از API"""
+    
+    description = RichTextField("توضیحات", blank=True)
+    api_url = models.URLField("آدرس API", blank=True, help_text="آدرس API برای دریافت داده‌های بورس")
+    
+    content_panels = Page.content_panels + [
+        FieldPanel('description'),
+        FieldPanel('api_url'),
+    ]
+    
+    search_fields = Page.search_fields + [
+        index.SearchField('description'),
+    ]
+    
+    def save_data_from_api(self):
+        """دریافت و ذخیره داده‌ها از API سازمان بورس"""
+        if not self.api_url:
+            return False, "آدرس API تنظیم نشده است"
+            
+        try:
+            response = requests.get(self.api_url)
+            response.raise_for_status()
+            
+            # تلاش برای تجزیه JSON
+            try:
+                data = response.json()
+            except:
+                # اگر پاسخ JSON نیست، شاید فرمت دیگری باشد
+                return False, f"خطا در دریافت داده‌ها: {response.text[:100]}"
+            
+            saved_count = 0
+            for item in data:
+                # تبدیل داده‌ها و ذخیره در AllData با فیلدهای صحیح
+                all_data, created = AllData.objects.update_or_create(
+                    isin=item.get('isin', ''),
+                    trade_date=self.shamsi_to_gregorian(item.get('trade_date_shamsi', '')),
+                    defaults={
+                        'symbol': item.get('symbol', ''),
+                        'company_name': item.get('company_name', ''),
+                        'trade_date_shamsi': item.get('trade_date_shamsi', ''),
+                        'weighted_final_price': self.safe_decimal(item.get('weighted_final_price')),
+                        'final_price': self.safe_decimal(item.get('final_price')),
+                        'first_price': self.safe_decimal(item.get('first_price')),
+                        'min_price': self.safe_decimal(item.get('min_price')),
+                        'max_price': self.safe_decimal(item.get('max_price')),
+                        'base_price': self.safe_decimal(item.get('base_price')),
+                        'trades_count': item.get('trades_count', 0),
+                        'contracts_volume': self.safe_decimal(item.get('contracts_volume', 0)),
+                        'supply_volume': self.safe_decimal(item.get('supply_volume', 0)),
+                        'demand_volume': self.safe_decimal(item.get('demand_volume', 0)),
+                        'trade_value': self.safe_decimal(item.get('trade_value', 0)),
+                        'source': f'scroll-time-{self.id}',
+                    }
+                )
+                if created:
+                    saved_count += 1
+                    
+            return True, f"تعداد {saved_count} رکورد جدید ذخیره شد"
+            
+        except requests.RequestException as e:
+            return False, f"خطا در دریافت داده‌ها: {str(e)}"
+        except Exception as e:
+            return False, f"خطا در پردازش داده‌ها: {str(e)}"
+    
+    @staticmethod
+    def safe_decimal(value):
+        """تبدیل امن به Decimal"""
+        if value is None or value == '':
+            return None
+        try:
+            return Decimal(str(value))
+        except:
+            return None
+            
+    @staticmethod
+    def shamsi_to_gregorian(shamsi_date):
+        """تبدیل تاریخ شمسی به میلادی"""
+        try:
+            if not shamsi_date or len(shamsi_date) != 10:
+                return None
+            year, month, day = map(int, shamsi_date.split('/'))
+            j_date = jdatetime.date(year, month, day)
+            return j_date.togregorian()
+        except:
+            return None
+
+
+class BlogPage(Page):
     template = "blog/detail.html"
     subpage_types = []
     parent_page_types = ["blog.BlogPageIndex"]
