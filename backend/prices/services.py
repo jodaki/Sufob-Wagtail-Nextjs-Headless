@@ -8,6 +8,7 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime, date
 from django.conf import settings
 from .models import ScrollTimeRequest, PriceData, DataImportLog
+from data_management.models import AllData as DataManagementAllData
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +26,17 @@ def convert_shamsi_to_gregorian(shamsi_date_str: str) -> date:
     try:
         if not shamsi_date_str:
             return datetime.now().date()
-            
+
+        # پاک‌سازی ورودی: حذف نویسه‌های اضافی مانند گیومه فارسی و انگلیسی
+        clean_str = shamsi_date_str.strip()
+        for ch in ['“', '”', '"', "'"]:
+            clean_str = clean_str.replace(ch, '')
         # تبدیل ساده - فعلاً 622 سال کم می‌کنیم
-        # در آینده باید کتابخانه دقیق‌تری استفاده کرد
-        year, month, day = shamsi_date_str.split('/')
+        # در آینده باید از کتابخانه دقیق‌تری استفاده کرد
+        parts = clean_str.split('/')
+        if len(parts) != 3:
+            return datetime.now().date()
+        year, month, day = parts
         gregorian_year = int(year) + 621  # تقریبی
         
         # محدود کردن ماه و روز
@@ -105,7 +113,7 @@ class ScrollTimeService:
                     response = self.session.post(
                         self.BASE_URL,
                         json=payload,  # استفاده از json به جای data - مطابق کد موفق
-                        timeout=10  # timeout کمتر مطابق کد موفق
+                        timeout=30  # timeout افزایش یافته برای شبکه کندتر
                     )
                     
                     logger.info(f"Response status: {response.status_code}")
@@ -282,9 +290,11 @@ class ScrollTimeService:
             scroll_request.status = 'completed'
             scroll_request.processed_records = stats['imported_records'] + stats['updated_records']
             scroll_request.save()
-            
-            # ایجاد لاگ وارد کردن داده
-            self._create_import_log(scroll_request, stats)
+            # ایجاد لاگ وارد کردن داده (در صورت خطا آن را نادیده بگیرید)
+            try:
+                self._create_import_log(scroll_request, stats)
+            except Exception as log_exc:
+                logger.warning(f"Skipping import log due to error: {log_exc}")
             
             return {
                 'success': True,
@@ -334,23 +344,37 @@ class ScrollTimeService:
                 price_date=price_date
             ).first()
             
-            if existing_record:
+            # بررسی وجود رکورد تکراری در AllData نیز
+            existing_alldata = DataManagementAllData.objects.filter(
+                commodity_name=goods_name,
+                transaction_date=shamsi_date_str
+            ).first()
+            
+            if existing_record or existing_alldata:
                 stats['duplicate_records'] += 1
                 
                 # رفتار با داده‌های تکراری
                 if scroll_request.duplicate_handling == 'skip':
                     return False
                 elif scroll_request.duplicate_handling == 'update':
-                    self._update_price_record(existing_record, record)
+                    if existing_record:
+                        self._update_price_record(existing_record, record)
+                    if existing_alldata:
+                        self._update_alldata_record(existing_alldata, record, scroll_request)
                     stats['updated_records'] += 1
                     return True
                 elif scroll_request.duplicate_handling == 'replace':
-                    existing_record.delete()
+                    if existing_record:
+                        existing_record.delete()
+                    if existing_alldata:
+                        existing_alldata.delete()
                     self._create_price_record(record, scroll_request)
+                    self._create_alldata_record(record, scroll_request)
                     return True
             else:
-                # ایجاد رکورد جدید
+                # ایجاد رکوردهای جدید در هر دو جدول
                 self._create_price_record(record, scroll_request)
+                self._create_alldata_record(record, scroll_request)
                 return True
                 
         except Exception as e:
@@ -401,12 +425,104 @@ class ScrollTimeService:
         existing_record.source = 'scroll_time'
         existing_record.save()
     
+    def _create_alldata_record(self, record: Dict[str, Any], scroll_request: ScrollTimeRequest) -> DataManagementAllData:
+        """ایجاد رکورد جدید در مدل data_management.AllData براساس ساختار Iran Exchange API"""
+        
+        shamsi_date_str = record.get('date', '')  # 1403/05/01
+        
+        return DataManagementAllData.objects.create(
+            # اطلاعات اصلی کالا
+            commodity_name=record.get('GoodsName', 'نامشخص')[:100],
+            symbol=record.get('Symbol', '')[:50],
+            hall=record.get('Hall', '')[:100],
+            producer=record.get('Producer', '')[:200],
+            contract_type=record.get('ContractType', '')[:50],
+            
+            # قیمت‌ها
+            final_price=record.get('Price', 0),
+            transaction_value=record.get('TotalPrice', 0),
+            lowest_price=record.get('MinPrice', 0),
+            highest_price=record.get('MaxPrice', 0),
+            base_price=record.get('BasePrice', 0),
+            
+            # حجم‌ها
+            offer_volume=int(record.get('OfferVolume', 0)) if record.get('OfferVolume') else 0,
+            demand_volume=int(record.get('DemandVolume', 0)) if record.get('DemandVolume') else 0,
+            contract_volume=int(record.get('Quantity', 0)) if record.get('Quantity') else 0,
+            unit=record.get('Unit', '')[:20],
+            
+            # تاریخ
+            transaction_date=shamsi_date_str,
+            
+            # اطلاعات اضافی
+            supplier=record.get('Supplier', '')[:200],
+            broker=record.get('Broker', '')[:100],
+            settlement_type=record.get('SettlementType', '')[:50],
+            delivery_date=record.get('DeliveryDate', ''),
+            warehouse=record.get('Warehouse', ''),
+            settlement_date=record.get('SettlementDate', ''),
+            
+            # شناسه‌ها
+            x_talar_report_pk=record.get('XTalarReportPK'),
+            arzeh_pk=record.get('ArzehPK'),
+            packet_name=record.get('PacketName', ''),
+            currency=record.get('Currency', ''),
+            
+            # داده خام
+            raw_data=record,
+            
+            # متادیتا
+            source=f'scroll_time_{scroll_request.id}',
+            api_endpoint='https://www.ime.co.ir/subsystems/ime/services/home/imedata.asmx/GetAmareMoamelatList'
+        )
+    
+    def _update_alldata_record(self, existing_record: DataManagementAllData, new_data: Dict[str, Any], scroll_request: ScrollTimeRequest) -> None:
+        """بروزرسانی رکورد موجود در مدل data_management.AllData براساس ساختار Iran Exchange API"""
+        existing_record.commodity_name = new_data.get('GoodsName', existing_record.commodity_name)[:100]
+        existing_record.symbol = new_data.get('Symbol', existing_record.symbol)[:50]
+        existing_record.hall = new_data.get('Hall', existing_record.hall)[:100]
+        existing_record.producer = new_data.get('Producer', existing_record.producer)[:200]
+        existing_record.contract_type = new_data.get('ContractType', existing_record.contract_type)[:50]
+        
+        # قیمت‌ها
+        existing_record.final_price = new_data.get('Price', existing_record.final_price)
+        existing_record.transaction_value = new_data.get('TotalPrice', existing_record.transaction_value)
+        existing_record.lowest_price = new_data.get('MinPrice', existing_record.lowest_price)
+        existing_record.highest_price = new_data.get('MaxPrice', existing_record.highest_price)
+        existing_record.base_price = new_data.get('BasePrice', existing_record.base_price)
+        
+        # حجم‌ها
+        existing_record.offer_volume = int(new_data.get('OfferVolume', existing_record.offer_volume or 0)) if new_data.get('OfferVolume') else existing_record.offer_volume
+        existing_record.demand_volume = int(new_data.get('DemandVolume', existing_record.demand_volume or 0)) if new_data.get('DemandVolume') else existing_record.demand_volume
+        existing_record.contract_volume = int(new_data.get('Quantity', existing_record.contract_volume or 0)) if new_data.get('Quantity') else existing_record.contract_volume
+        existing_record.unit = new_data.get('Unit', existing_record.unit)[:20]
+        
+        # اطلاعات اضافی
+        existing_record.supplier = new_data.get('Supplier', existing_record.supplier)[:200]
+        existing_record.broker = new_data.get('Broker', existing_record.broker)[:100]
+        existing_record.settlement_type = new_data.get('SettlementType', existing_record.settlement_type)[:50]
+        existing_record.delivery_date = new_data.get('DeliveryDate', existing_record.delivery_date)
+        existing_record.warehouse = new_data.get('Warehouse', existing_record.warehouse)
+        existing_record.settlement_date = new_data.get('SettlementDate', existing_record.settlement_date)
+        
+        # شناسه‌ها
+        existing_record.x_talar_report_pk = new_data.get('XTalarReportPK', existing_record.x_talar_report_pk)
+        existing_record.arzeh_pk = new_data.get('ArzehPK', existing_record.arzeh_pk)
+        existing_record.packet_name = new_data.get('PacketName', existing_record.packet_name)
+        existing_record.currency = new_data.get('Currency', existing_record.currency)
+        
+        # داده خام و متادیتا
+        existing_record.raw_data = new_data
+        existing_record.source = f'scroll_time_{scroll_request.id}'
+        
+        existing_record.save()
+    
     def _create_import_log(self, scroll_request: ScrollTimeRequest, stats: Dict[str, int]):
         """ایجاد لاگ وارد کردن داده"""
         DataImportLog.objects.create(
             commodity_name=f"{scroll_request.main_category.name} -> {scroll_request.category.name} -> {scroll_request.subcategory.name}",
-            start_date=scroll_request.start_date_shamsi,
-            end_date=scroll_request.end_date_shamsi,
+            start_date=convert_shamsi_to_gregorian(scroll_request.start_date_shamsi),
+            end_date=convert_shamsi_to_gregorian(scroll_request.end_date_shamsi),
             total_records=stats['total_records'],
             imported_records=stats['imported_records'],
             updated_records=stats['updated_records'],

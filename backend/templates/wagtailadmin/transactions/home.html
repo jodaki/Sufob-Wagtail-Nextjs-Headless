@@ -1,0 +1,191 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block titletag %}مدیریت معاملات - {{ site_name }}{% endblock %}
+
+{% block content %}
+    <header class="header">
+        <div class="row">
+            <div class="left">
+                <div class="col">
+                    <h1 class="icon icon-table">مدیریت معاملات</h1>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="nice-padding">
+        <!-- کارت‌های آمار کلی -->
+        <div class="row">
+            <div class="col3">
+                <div class="stats-card">
+                    <div class="icon icon-clipboard-list"></div>
+                    <div class="stats">
+                        <h2>{{ transactions_count }}</h2>
+                        <p>کل معاملات</p>
+                        <a href="{% url 'wagtail_modeladmin_transactions_transaction_index' %}" class="button button-small">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col3">
+                <div class="stats-card">
+                    <div class="icon icon-time"></div>
+                    <div class="stats">
+                        <h2>{{ staged_count }}</h2>
+                        <p>معاملات موقت</p>
+                        <a href="{% url 'wagtail_modeladmin_transactions_stagedtransaction_index' %}" class="button button-small">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col3">
+                <div class="stats-card">
+                    <div class="icon icon-doc-full-inverse"></div>
+                    <div class="stats">
+                        <h2>{{ recent_imports|length }}</h2>
+                        <p>واردات اخیر</p>
+                        <a href="{% url 'transaction_import_logs' %}" class="button button-small">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col3">
+                <div class="stats-card">
+                    <div class="icon icon-date"></div>
+                    <div class="stats">
+                        <h2>-</h2>
+                        <p>اطلاعات روزانه</p>
+                        <a href="{% url 'transaction_daily_info' %}" class="button button-small">مشاهده</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- دکمه‌های عملیات سریع -->
+        <div class="row">
+            <div class="col12">
+                <div class="help-block">
+                    <h2>عملیات سریع</h2>
+                    <div class="button-group">
+                        <a href="{% url 'transaction_import_export' %}" class="button button-primary bicolor icon icon-download">
+                            واردات داده‌های جدید
+                        </a>
+                        {% if staged_count > 0 %}
+                        <a href="{% url 'transaction_confirm_staged' %}" 
+                           class="button button-secondary bicolor icon icon-tick"
+                           onclick="return confirm('آیا از تایید و انتقال {{ staged_count }} داده موقت اطمینان دارید؟')">
+                            تایید داده‌های موقت ({{ staged_count }})
+                        </a>
+                        <a href="{% url 'clear_staged' %}" 
+                           class="button no bicolor icon icon-bin"
+                           onclick="return confirm('آیا از حذف {{ staged_count }} داده موقت اطمینان دارید؟ این عمل قابل بازگشت نیست!')">
+                            حذف داده‌های موقت
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- آخرین واردات -->
+        {% if recent_imports %}
+        <div class="row">
+            <div class="col6">
+                <div class="help-block">
+                    <h2>آخرین واردات</h2>
+                    <table class="listing">
+                        <thead>
+                            <tr>
+                                <th>تاریخ</th>
+                                <th>نوع</th>
+                                <th>تعداد</th>
+                                <th>وضعیت</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for import in recent_imports %}
+                            <tr>
+                                <td>{{ import.created_at|date:'Y/m/d H:i' }}</td>
+                                <td>{{ import.product_type }}</td>
+                                <td>{{ import.record_count }}</td>
+                                <td>
+                                    {% if import.status == 'ذخیره شده' %}
+                                        <span class="status-tag primary">{{ import.status }}</span>
+                                    {% else %}
+                                        <span class="status-tag">{{ import.status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <p><a href="{% url 'transaction_import_logs' %}">مشاهده همه گزارشات</a></p>
+                </div>
+            </div>
+
+            <!-- آخرین معاملات -->
+            <div class="col6">
+                <div class="help-block">
+                    <h2>آخرین معاملات</h2>
+                    <table class="listing">
+                        <thead>
+                            <tr>
+                                <th>کالا</th>
+                                <th>نماد</th>
+                                <th>تاریخ</th>
+                                <th>قیمت</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in recent_transactions %}
+                            <tr>
+                                <td>{{ transaction.commodity_name|truncatechars:20 }}</td>
+                                <td>{{ transaction.symbol }}</td>
+                                <td>{{ transaction.transaction_date }}</td>
+                                <td>{{ transaction.final_price|floatformat:0 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <p><a href="{% url 'wagtail_modeladmin_transactions_transaction_index' %}">مشاهده همه معاملات</a></p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <style>
+    .stats-card {
+        background: white;
+        border: 1px solid #e6e6e6;
+        border-radius: 3px;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .stats-card .icon {
+        font-size: 2.5em;
+        color: #007d7e;
+        margin-bottom: 10px;
+    }
+    .stats-card h2 {
+        margin: 0;
+        font-size: 2.5em;
+        color: #333;
+    }
+    .stats-card p {
+        margin: 5px 0 10px;
+        color: #666;
+    }
+    .button-group {
+        margin-top: 15px;
+    }
+    .button-group .button {
+        margin-right: 10px;
+        margin-bottom: 10px;
+    }
+    </style>
+{% endblock %}

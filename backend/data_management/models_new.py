@@ -13,7 +13,7 @@ class AllData(models.Model):
     
     # قیمت‌ها
     final_price = models.FloatField(null=True, blank=True, verbose_name="قیمت نهایی")
-    transaction_value = models.BigIntegerField(null=True, blank=True, default=0, verbose_name="ارزش معامله")
+    transaction_value = models.BigIntegerField(default=0, verbose_name="ارزش معامله")
     lowest_price = models.FloatField(null=True, blank=True, verbose_name="کمترین قیمت")
     highest_price = models.FloatField(null=True, blank=True, verbose_name="بیشترین قیمت")
     base_price = models.FloatField(null=True, blank=True, verbose_name="قیمت پایه")
@@ -21,7 +21,7 @@ class AllData(models.Model):
     # حجم‌ها
     offer_volume = models.IntegerField(default=0, verbose_name="حجم عرضه")
     demand_volume = models.IntegerField(default=0, verbose_name="حجم تقاضا")
-    contract_volume = models.IntegerField(null=True, blank=True, default=0, verbose_name="حجم قرارداد")
+    contract_volume = models.IntegerField(default=0, verbose_name="حجم قرارداد")
     unit = models.CharField(max_length=20, verbose_name="واحد", blank=True)
     
     # تاریخ

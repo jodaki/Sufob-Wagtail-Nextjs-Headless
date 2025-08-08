@@ -67,7 +67,9 @@ class ScrollTimeSendView(DetailView):
         import traceback
         from django.utils import timezone
         
-        scroll_request = self.get_object()
+        # تنظیم object برای DetailView
+        self.object = self.get_object()
+        scroll_request = self.object
         action = request.POST.get('action', 'send_request')
         
         # لاگ درخواست

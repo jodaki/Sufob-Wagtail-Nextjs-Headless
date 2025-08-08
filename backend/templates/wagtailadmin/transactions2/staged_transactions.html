@@ -1,0 +1,315 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block titletag %}{{ page_title }}{% endblock %}
+
+{% block content %}
+    <header class="header">
+        <div class="row">
+            <div class="left">
+                <div class="col">
+                    <h1 class="header-title">
+                        <svg class="icon icon-doc-empty-inverse header-title-icon" aria-hidden="true">
+                            <use href="#icon-doc-empty-inverse"></use>
+                        </svg>
+                        {{ page_title }}
+                    </h1>
+                </div>
+            </div>
+            <div class="right">
+                <div class="col">
+                    <a href="{% url 'transaction2_dashboard' %}" class="button button-secondary">بازگشت به داشبورد</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="nice-padding">
+        {% if staged_transactions %}
+            <div class="card">
+                <div class="card-content">
+                    <table class="listing" id="staged-transactions-table">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <input type="checkbox" id="select-all">
+                                </th>
+                                <th>نام کالا</th>
+                                <th>نماد</th>
+                                <th>قیمت نهایی</th>
+                                <th>حجم قرارداد</th>
+                                <th>تاریخ معامله</th>
+                                <th>وضعیت</th>
+                                <th>اقدامات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for staged in staged_transactions %}
+                                <tr data-staged-id="{{ staged.id }}">
+                                    <td>
+                                        <input type="checkbox" name="staged-select" value="{{ staged.id }}">
+                                    </td>
+                                    <td>{{ staged.commodity_name|truncatechars:30 }}</td>
+                                    <td>{{ staged.symbol }}</td>
+                                    <td>
+                                        {% if staged.final_price %}
+                                            {{ staged.final_price|floatformat:0 }} ریال
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ staged.contract_volume|floatformat:0 }} {{ staged.unit }}</td>
+                                    <td>{{ staged.transaction_date }}</td>
+                                    <td>
+                                        {% if staged.is_approved %}
+                                            <span class="status-tag status-live">✅ تایید شده</span>
+                                        {% else %}
+                                            <span class="status-tag status-scheduled">⏳ در انتظار تایید</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if not staged.is_approved %}
+                                            <button class="button button-small confirm-btn" 
+                                                    data-staged-id="{{ staged.id }}"
+                                                    data-commodity="{{ staged.commodity_name }}">
+                                                تایید
+                                            </button>
+                                        {% endif %}
+                                        <button class="button button-small button-secondary view-btn" 
+                                                data-staged-id="{{ staged.id }}">
+                                            جزئیات
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            {% if staged_transactions.has_other_pages %}
+                <div class="pagination">
+                    <ul class="pagination-list">
+                        {% if staged_transactions.has_previous %}
+                            <li class="pagination-item">
+                                <a href="?page={{ staged_transactions.previous_page_number }}" class="pagination-link">قبلی</a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for num in staged_transactions.paginator.page_range %}
+                            {% if staged_transactions.number == num %}
+                                <li class="pagination-item current">
+                                    <span class="pagination-link">{{ num }}</span>
+                                </li>
+                            {% elif num > staged_transactions.number|add:'-3' and num < staged_transactions.number|add:'3' %}
+                                <li class="pagination-item">
+                                    <a href="?page={{ num }}" class="pagination-link">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if staged_transactions.has_next %}
+                            <li class="pagination-item">
+                                <a href="?page={{ staged_transactions.next_page_number }}" class="pagination-link">بعدی</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            <!-- Bulk Actions -->
+            <div class="bulk-actions" id="bulk-actions" style="display: none;">
+                <button class="button" id="bulk-confirm">تایید انتخاب شده‌ها</button>
+                <button class="button button-secondary" id="bulk-cancel">لغو انتخاب</button>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="card-content">
+                    <div class="help-block">
+                        <h3>معامله موقتی وجود ندارد</h3>
+                        <p>در حال حاضر هیچ معامله موقتی برای تایید وجود ندارد.</p>
+                        <a href="{% url 'transaction2_import' %}" class="button">واردات داده‌های جدید</a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Modal for details -->
+    <div id="details-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>جزئیات معامله موقت</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-details">
+                <!-- Details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .card {
+            background: white;
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .card-content {
+            padding: 0;
+        }
+        .status-live {
+            background-color: #007cba;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .status-scheduled {
+            background-color: #f39c12;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .bulk-actions {
+            background: #f8f8f8;
+            padding: 15px;
+            border-radius: 3px;
+            margin-top: 20px;
+        }
+        .modal {
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 5px;
+            width: 80%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e6e6e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 {
+            margin: 0;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+        .modal-body {
+            padding: 20px;
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Select all checkbox
+            const selectAllCheckbox = document.getElementById('select-all');
+            const individualCheckboxes = document.querySelectorAll('input[name="staged-select"]');
+            const bulkActions = document.getElementById('bulk-actions');
+            
+            selectAllCheckbox.addEventListener('change', function() {
+                individualCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                toggleBulkActions();
+            });
+            
+            individualCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', toggleBulkActions);
+            });
+            
+            function toggleBulkActions() {
+                const checkedBoxes = document.querySelectorAll('input[name="staged-select"]:checked');
+                bulkActions.style.display = checkedBoxes.length > 0 ? 'block' : 'none';
+            }
+            
+            // Confirm buttons
+            document.querySelectorAll('.confirm-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const stagedId = this.dataset.stagedId;
+                    const commodity = this.dataset.commodity;
+                    
+                    if (confirm(`آیا از تایید معامله "${commodity}" اطمینان دارید؟`)) {
+                        confirmTransaction(stagedId);
+                    }
+                });
+            });
+            
+            function confirmTransaction(stagedId) {
+                fetch(`/sufobadmin/transactions2/confirm/${stagedId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        location.reload();
+                    } else {
+                        alert('خطا: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('خطا در ارتباط با سرور');
+                });
+            }
+            
+            // Modal functionality
+            const modal = document.getElementById('details-modal');
+            const modalClose = document.querySelector('.modal-close');
+            
+            document.querySelectorAll('.view-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    // For now, just show basic info
+                    const row = this.closest('tr');
+                    const cells = row.querySelectorAll('td');
+                    
+                    document.getElementById('modal-details').innerHTML = `
+                        <p><strong>نام کالا:</strong> ${cells[1].textContent}</p>
+                        <p><strong>نماد:</strong> ${cells[2].textContent}</p>
+                        <p><strong>قیمت نهایی:</strong> ${cells[3].textContent}</p>
+                        <p><strong>حجم قرارداد:</strong> ${cells[4].textContent}</p>
+                        <p><strong>تاریخ معامله:</strong> ${cells[5].textContent}</p>
+                    `;
+                    
+                    modal.style.display = 'block';
+                });
+            });
+            
+            modalClose.addEventListener('click', function() {
+                modal.style.display = 'none';
+            });
+            
+            window.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+    </script>
+    
+    {% csrf_token %}
+{% endblock %}

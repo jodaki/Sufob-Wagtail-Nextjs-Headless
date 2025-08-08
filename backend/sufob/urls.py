@@ -1,14 +1,14 @@
-from blog.views import health_check, update_view_count
+from blog.views import health_check, update_view_count, scroll_time_save_data
 from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import TemplateView
 from search import views as search_views
 from sufob_comments import urls as sufob_comments_urls
+from blog import urls as blog_urls
 from wagtail import urls as wagtail_urls
 from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.documents import urls as wagtaildocs_urls
-from transactions.views import api_transactions, api_dailyinfo_list, api_commodities
 
 from .api import api_router
 
@@ -16,19 +16,20 @@ urlpatterns = [
     path("django-admin/", admin.site.urls),
     path("sufobadmin/", include(wagtailadmin_urls)),
     path("documents/", include(wagtaildocs_urls)),
+    
     path("search/", search_views.search, name="search"),
     path(
         "robots.txt",
         TemplateView.as_view(template_name="robots.txt", content_type="text/plain"),
     ),
     path("api/v2/", api_router.urls),
-    path("api/transactions/", api_transactions, name="api_transactions"),
-    path("api/dailyinfo/", api_dailyinfo_list, name="api_dailyinfo"),
-    path("api/commodities/", api_commodities, name="api_commodities"),
+    
     path("prices/", include("prices.urls")),
     path("view-api/update_view_count/<int:blog_page_id>/", update_view_count),
     path("comments/", include(sufob_comments_urls)),
     path("health-check/", health_check, name="health_check"),
+    path("blog/", include(blog_urls)),
+    path("save-scroll-time-data/<int:page_id>/", scroll_time_save_data, name="save_scroll_time_data"),
 ]
 
 

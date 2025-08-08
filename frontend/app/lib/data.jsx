@@ -5,7 +5,7 @@ export const indexPages = async () => {
     return await fetch(
         `${apiUrl}/api/v2/pages/?${new URLSearchParams({
             type: "blog.BlogPageIndex",
-            slug: "blog",
+            slug: "blog-index",
             fields: "intro",
         })}`,
         {

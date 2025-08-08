@@ -1,0 +1,98 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+
+{% block titletag %}اطلاعات روزانه معاملات - {{ site_name }}{% endblock %}
+
+{% block content %}
+    <header class="header">
+        <div class="row">
+            <div class="left">
+                <div class="col">
+                    <h1 class="icon icon-date">اطلاعات روزانه معاملات</h1>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="nice-padding">
+        <div class="help-block">
+            <p>اطلاعات خلاصه روزانه معاملات کالاهای مختلف</p>
+        </div>
+
+        {% if infos %}
+            <div class="table-responsive">
+                <table class="listing">
+                    <thead>
+                        <tr>
+                            <th>تاریخ معامله</th>
+                            <th>قیمت پایانی میانگین موزون</th>
+                            <th>قیمت پایانی</th>
+                            <th>پایین‌ترین</th>
+                            <th>بالاترین</th>
+                            <th>محدوده هفتگی</th>
+                            <th>محدوده ۳۰ روزه</th>
+                            <th>تغییر ماهه</th>
+                            <th>نوع تسویه</th>
+                            <th>حجم قراردادها</th>
+                            <th>تقاضا</th>
+                            <th>حجم عرضه</th>
+                            <th>قیمت پایه عرضه</th>
+                            <th>ارزش معامله (هزارریال)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for info in infos %}
+                        <tr>
+                            <td>{{ info.transaction_date }}</td>
+                            <td>{{ info.avg_final_price }}</td>
+                            <td>{{ info.final_price }}</td>
+                            <td>{{ info.lowest_price }}</td>
+                            <td>{{ info.highest_price }}</td>
+                            <td>{{ info.weekly_range }}</td>
+                            <td>{{ info.monthly_range }}</td>
+                            <td>{{ info.monthly_change }}</td>
+                            <td>{{ info.settlement_type }}</td>
+                            <td>{{ info.contract_volume }}</td>
+                            <td>{{ info.demand }}</td>
+                            <td>{{ info.offer_volume }}</td>
+                            <td>{{ info.base_price }}</td>
+                            <td>{{ info.transaction_value }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- صفحه‌بندی -->
+            {% if infos.has_other_pages %}
+            <nav class="pagination" role="navigation" aria-label="pagination">
+                {% if infos.has_previous %}
+                    <a href="?page={{ infos.previous_page_number }}" class="pagination-previous" aria-label="Previous page">
+                        <span class="icon icon-arrow-left" aria-hidden="true"></span>
+                        قبلی
+                    </a>
+                {% endif %}
+
+                <div class="pagination-info">
+                    صفحه {{ infos.number }} از {{ infos.paginator.num_pages }}
+                </div>
+
+                {% if infos.has_next %}
+                    <a href="?page={{ infos.next_page_number }}" class="pagination-next" aria-label="Next page">
+                        بعدی
+                        <span class="icon icon-arrow-right" aria-hidden="true"></span>
+                    </a>
+                {% endif %}
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="help-block">
+                <p>هیچ اطلاعات روزانه‌ای یافت نشد.</p>
+            </div>
+        {% endif %}
+
+        <div class="actions">
+            <a href="{% url 'transaction_home' %}" class="button button-secondary">بازگشت به صفحه اصلی</a>
+        </div>
+    </div>
+{% endblock %}

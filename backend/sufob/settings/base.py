@@ -60,7 +60,6 @@ INSTALLED_APPS = [
     "blog",
     "streams",
     "prices",
-    "transactions",
     "sufob_settings",
     "sufob_users",
     "data_management",  # 🧩 مدیریت داده‌ها

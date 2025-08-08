@@ -142,23 +142,77 @@ class TaggedBlog(ItemBase):
 from django.db import models
 from wagtail.models import Page
 from wagtail.fields import RichTextField
-from wagtail.admin.panels import FieldPanel
+from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.search import index
 from data_management.models import AllData
 import requests
-import jdatetime
+import json
 from decimal import Decimal
 
 
 class ScrollTimePage(Page):
-    """صفحه برای دریافت و ذخیره داده‌های بورس از API"""
+    """صفحه حرفه‌ای برای دریافت و ذخیره داده‌های بورس از API IME"""
+    
+    template = "blog/scroll_time_page.html"
     
     description = RichTextField("توضیحات", blank=True)
-    api_url = models.URLField("آدرس API", blank=True, help_text="آدرس API برای دریافت داده‌های بورس")
+    
+    # تنظیمات API
+    api_url = models.URLField(
+        "آدرس API", 
+        default="https://www.ime.co.ir/subsystems/ime/services/home/imedata.asmx/GetAmareMoamelatList",
+        help_text="آدرس API برای دریافت داده‌های بورس"
+    )
+    
+    # تنظیمات تاریخ
+    from_date = models.CharField(
+        max_length=10, 
+        default="1404/04/01", 
+        verbose_name="تاریخ شروع (شمسی)",
+        help_text="مثال: 1404/04/01"
+    )
+    to_date = models.CharField(
+        max_length=10, 
+        default="1404/04/29", 
+        verbose_name="تاریخ پایان (شمسی)",
+        help_text="مثال: 1404/04/29"
+    )
+    
+    # تنظیمات دسته‌بندی (کنسانتره سنگ آهن)
+    main_cat = models.IntegerField(default=1, verbose_name="دسته اصلی")
+    cat = models.IntegerField(default=49, verbose_name="دسته فرعی")
+    sub_cat = models.IntegerField(default=477, verbose_name="زیردسته")
+    producer = models.IntegerField(default=0, verbose_name="تولیدکننده")
+    
+    # تنظیمات نمایش
+    last_fetch_time = models.DateTimeField(null=True, blank=True, verbose_name="آخرین دریافت")
+    last_fetch_count = models.IntegerField(default=0, verbose_name="تعداد رکورد آخرین دریافت")
+    auto_fetch = models.BooleanField(default=False, verbose_name="دریافت خودکار")
+    
+    # تنظیمات ذخیره خودکار
+    auto_save_to_database = models.BooleanField(
+        default=False, 
+        verbose_name="ذخیره خودکار در پایگاه داده",
+        help_text="اگر فعال باشد، هنگام ذخیره صفحه، داده‌ها از API دریافت و در پایگاه داده ذخیره خواهد شد"
+    )
     
     content_panels = Page.content_panels + [
         FieldPanel('description'),
         FieldPanel('api_url'),
+        MultiFieldPanel([
+            FieldPanel('from_date'),
+            FieldPanel('to_date'),
+        ], heading="محدوده تاریخ"),
+        MultiFieldPanel([
+            FieldPanel('main_cat'),
+            FieldPanel('cat'),
+            FieldPanel('sub_cat'),
+            FieldPanel('producer'),
+        ], heading="تنظیمات دسته‌بندی"),
+        MultiFieldPanel([
+            FieldPanel('auto_fetch'),
+            FieldPanel('auto_save_to_database'),
+        ], heading="وضعیت و تنظیمات"),
     ]
     
     search_fields = Page.search_fields + [
@@ -166,54 +220,124 @@ class ScrollTimePage(Page):
     ]
     
     def save_data_from_api(self):
-        """دریافت و ذخیره داده‌ها از API سازمان بورس"""
+        """دریافت حرفه‌ای و ذخیره داده‌ها از API IME (مبتنی بر کدهای شما)"""
         if not self.api_url:
             return False, "آدرس API تنظیم نشده است"
-            
+        
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Payload مطابق کدهای شما
+        payload = {
+            "Language": 8,
+            "fari": False,
+            "GregorianFromDate": self.from_date,
+            "GregorianToDate": self.to_date,
+            "MainCat": self.main_cat,
+            "Cat": self.cat,
+            "SubCat": self.sub_cat,
+            "Producer": self.producer
+        }
+        
+        # Headers مطابق کدهای شما
+        headers = {
+            "Content-Type": "application/json; charset=UTF-8",
+            "Accept": "text/plain, */*; q=0.01",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+            "Accept-Language": "fa-IR,fa;q=0.9,en-GB;q=0.8,en;q=0.7,en-US;q=0.6"
+        }
+        
         try:
-            response = requests.get(self.api_url)
-            response.raise_for_status()
+            # درخواست POST مطابق کدهای شما
+            logger.info(f"درخواست به API با پارامترهای: {payload}")
+            response = requests.post(self.api_url, json=payload, headers=headers, timeout=30)
             
-            # تلاش برای تجزیه JSON
+            if response.status_code != 200:
+                logger.error(f"خطای HTTP: {response.status_code}, پاسخ: {response.text[:500]}")
+                return False, f"خطای HTTP {response.status_code}: سرور پاسخ نامعتبر داد"
+            
+            # پردازش پاسخ JSON
             try:
-                data = response.json()
-            except:
-                # اگر پاسخ JSON نیست، شاید فرمت دیگری باشد
-                return False, f"خطا در دریافت داده‌ها: {response.text[:100]}"
+                response_data = response.json()
+            except ValueError as e:
+                logger.error(f"خطا در پردازش JSON: {e}, محتوا: {response.text[:500]}")
+                return False, f"خطا در پردازش پاسخ: محتوای دریافتی JSON معتبر نیست"
             
+            if not response_data.get("d"):
+                logger.error(f"خطا در ساختار JSON: کلید 'd' یافت نشد. پاسخ: {response_data}")
+                return False, "خطا در ساختار پاسخ: داده‌های مورد انتظار یافت نشد"
+            
+            try:
+                data = json.loads(response_data.get("d", "[]"))
+            except ValueError as e:
+                logger.error(f"خطا در پردازش محتوای d: {e}, محتوا: {response_data.get('d')[:500]}")
+                return False, "خطا در پردازش داده‌های دریافتی"
+            
+            if not isinstance(data, list):
+                logger.error(f"داده دریافتی لیست نیست: {type(data)}")
+                return False, f"فرمت پاسخ API نامعتبر است: {type(data)}"
+            
+            total_records = len(data)
             saved_count = 0
+            errors_count = 0
+            
+            if total_records == 0:
+                logger.warning("هیچ داده‌ای از API دریافت نشد")
+                return False, "هیچ داده‌ای برای ذخیره‌سازی یافت نشد"
+            
             for item in data:
-                # تبدیل داده‌ها و ذخیره در AllData با فیلدهای صحیح
-                all_data, created = AllData.objects.update_or_create(
-                    isin=item.get('isin', ''),
-                    trade_date=self.shamsi_to_gregorian(item.get('trade_date_shamsi', '')),
-                    defaults={
-                        'symbol': item.get('symbol', ''),
-                        'company_name': item.get('company_name', ''),
-                        'trade_date_shamsi': item.get('trade_date_shamsi', ''),
-                        'weighted_final_price': self.safe_decimal(item.get('weighted_final_price')),
-                        'final_price': self.safe_decimal(item.get('final_price')),
-                        'first_price': self.safe_decimal(item.get('first_price')),
-                        'min_price': self.safe_decimal(item.get('min_price')),
-                        'max_price': self.safe_decimal(item.get('max_price')),
-                        'base_price': self.safe_decimal(item.get('base_price')),
-                        'trades_count': item.get('trades_count', 0),
-                        'contracts_volume': self.safe_decimal(item.get('contracts_volume', 0)),
-                        'supply_volume': self.safe_decimal(item.get('supply_volume', 0)),
-                        'demand_volume': self.safe_decimal(item.get('demand_volume', 0)),
-                        'trade_value': self.safe_decimal(item.get('trade_value', 0)),
-                        'source': f'scroll-time-{self.id}',
-                    }
-                )
-                if created:
-                    saved_count += 1
+                try:
+                    # بررسی فیلدهای ضروری
+                    if not all([item.get('GoodsName'), item.get('Symbol'), item.get('date')]):
+                        logger.warning(f"داده ناقص: {item}")
+                        errors_count += 1
+                        continue
                     
-            return True, f"تعداد {saved_count} رکورد جدید ذخیره شد"
+                    # ذخیره در AllData
+                    all_data, created = AllData.objects.update_or_create(
+                        symbol=item.get('Symbol', ''),
+                        transaction_date=item.get('date', ''),
+                        defaults={
+                            'commodity_name': item.get('GoodsName', ''),
+                            'final_price': float(item.get('Price')) if item.get('Price') else None,
+                            'source': f'scroll-time-{self.id}',
+                            # استفاده از Quantity به عنوان جایگزین Volume
+                            'contract_volume': float(item.get('Quantity')) if item.get('Quantity') else float(item.get('Volume')) if item.get('Volume') else None,
+                            # استفاده از TotalPrice به عنوان جایگزین Value
+                            'transaction_value': float(item.get('TotalPrice')) if item.get('TotalPrice') else float(item.get('Value')) if item.get('Value') else None,
+                            'producer': item.get('ProducerName', '') or item.get('Producer', ''),
+                            'hall': item.get('Talar', '') or item.get('Hall', ''),
+                            'raw_data': item,
+                            # اطلاعات اضافی
+                            'supplier': item.get('ArzehKonandeh', ''),
+                            'broker': item.get('cBrokerSpcName', ''),
+                            'warehouse': item.get('Warehouse', ''),
+                            'delivery_date': item.get('DeliveryDate'),
+                            'settlement_date': item.get('SettlementDate'),
+                            'contract_type': item.get('ContractType', ''),
+                            'settlement_type': item.get('Tasvieh', ''),
+                            'unit': item.get('Unit', ''),
+                        }
+                    )
+                    if created:
+                        saved_count += 1
+                except Exception as item_error:
+                    logger.error(f"خطا در ذخیره آیتم {item.get('Symbol')}: {str(item_error)}")
+                    errors_count += 1
+                    continue
+            
+            if errors_count > 0:
+                return True, f"تعداد {saved_count} رکورد جدید از {total_records} ذخیره شد. {errors_count} خطا رخ داد."
+            else:
+                return True, f"تعداد {saved_count} رکورد جدید از {total_records} با موفقیت ذخیره شد."
             
         except requests.RequestException as e:
-            return False, f"خطا در دریافت داده‌ها: {str(e)}"
+            logger.error(f"خطا در ارتباط با API: {str(e)}")
+            return False, f"خطا در ارتباط با API: {str(e)}"
         except Exception as e:
-            return False, f"خطا در پردازش داده‌ها: {str(e)}"
+            import traceback
+            logger.error(f"خطای پیش‌بینی نشده: {str(e)}, جزییات: {traceback.format_exc()}")
+            return False, f"خطای پیش‌بینی نشده: {str(e)}"
     
     @staticmethod
     def safe_decimal(value):
@@ -227,15 +351,42 @@ class ScrollTimePage(Page):
             
     @staticmethod
     def shamsi_to_gregorian(shamsi_date):
-        """تبدیل تاریخ شمسی به میلادی"""
-        try:
-            if not shamsi_date or len(shamsi_date) != 10:
-                return None
-            year, month, day = map(int, shamsi_date.split('/'))
-            j_date = jdatetime.date(year, month, day)
-            return j_date.togregorian()
-        except:
-            return None
+        """تبدیل ساده تاریخ شمسی به میلادی (بدون jdatetime)"""
+        # برای سادگی فقط string برگردانیم
+        return shamsi_date
+    
+    def get_context(self, request, *args, **kwargs):
+        """اضافه کردن داده‌های ذخیره شده به context"""
+        context = super().get_context(request, *args, **kwargs)
+        
+        # Get the saved data for this page
+        saved_data = AllData.objects.filter(source=f'scroll-time-{self.id}').order_by('-created_at')[:50]
+        context['saved_data'] = saved_data
+        
+        return context
+    
+    def save(self, *args, **kwargs):
+        """Override save method to auto-save data from API if checkbox is checked"""
+        # First save the page normally
+        super().save(*args, **kwargs)
+        
+        # If auto save is enabled, fetch and save API data
+        if self.auto_save_to_database:
+            try:
+                success, message = self.save_data_from_api()
+                if success:
+                    # Update last fetch information
+                    from django.utils import timezone
+                    self.last_fetch_time = timezone.now()
+                    # Save again but without triggering auto-save to avoid infinite loop
+                    temp_auto_save = self.auto_save_to_database
+                    self.auto_save_to_database = False
+                    super().save(update_fields=['last_fetch_time', 'auto_save_to_database'])
+                    self.auto_save_to_database = temp_auto_save
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"خطا در ذخیره خودکار داده‌ها: {str(e)}")
 
 
 class BlogPage(Page):

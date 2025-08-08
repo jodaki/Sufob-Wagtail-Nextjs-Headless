@@ -1,4 +1,4 @@
-from transactions.models import Transaction
+from data_management.models import AllData
 from wagtail.api.v2.filters import FieldsFilter
 from wagtail.api.v2.views import BaseAPIViewSet
 from rest_framework.response import Response
@@ -8,7 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 class TransactionAPIViewSet(BaseAPIViewSet):
     """API ViewSet برای دریافت داده‌های معاملات"""
-    model = Transaction
+    model = AllData
     known_query_parameters = BaseAPIViewSet.known_query_parameters.union([
         "commodity", "from_date", "to_date"
     ])
@@ -27,7 +27,7 @@ class TransactionAPIViewSet(BaseAPIViewSet):
     filter_backends = BaseAPIViewSet.filter_backends + [FieldsFilter]
 
     def get_queryset(self):
-        queryset = Transaction.objects.all().order_by('-transaction_date')
+        queryset = AllData.objects.all().order_by('-transaction_date')
         
         # فیلتر بر اساس کالا
         commodity = self.request.GET.get('commodity')
@@ -50,7 +50,7 @@ class CommodityAPIViewSet(BaseAPIViewSet):
     """API ViewSet برای دریافت لیست کالاها"""
     
     def list(self, request):
-        commodities = Transaction.objects.values_list('commodity_name', flat=True).distinct()
+        commodities = AllData.objects.values_list('commodity_name', flat=True).distinct()
         data = [{'name': commodity} for commodity in commodities if commodity]
         return Response({'items': data})
 
@@ -59,7 +59,7 @@ class CommodityAPIViewSet(BaseAPIViewSet):
 def price_chart_data(request, commodity):
     """API endpoint برای دریافت داده‌های چارت"""
     try:
-        transactions = Transaction.objects.filter(
+        transactions = AllData.objects.filter(
             commodity_name__icontains=commodity
         ).order_by('-transaction_date')[:30]
         

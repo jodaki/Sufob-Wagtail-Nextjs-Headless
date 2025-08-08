@@ -9,14 +9,48 @@ def scroll_time_save_data(request, page_id):
     page = get_object_or_404(ScrollTimePage, id=page_id)
     
     if request.method == 'POST':
-        success, message = page.save_data_from_api()
-        
-        if success:
-            messages.success(request, message)
-        else:
-            messages.error(request, message)
+        try:
+            success, message = page.save_data_from_api()
             
-        return redirect('wagtailadmin_pages:edit', page_id)
+            if success:
+                # Update the last fetch time and count
+                from django.utils import timezone
+                page.last_fetch_time = timezone.now()
+                # The count will be included in the message
+                try:
+                    # استخراج تعداد رکوردها از پیام
+                    import re
+                    count_match = re.search(r'تعداد (\d+) رکورد', message)
+                    if count_match:
+                        page.last_fetch_count = int(count_match.group(1))
+                except (IndexError, ValueError, AttributeError) as e:
+                    # ثبت خطا در لاگ
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"خطا در استخراج تعداد رکورد: {e}")
+                
+                page.save(update_fields=['last_fetch_time', 'last_fetch_count'])
+                messages.success(request, f"✅ {message}")
+            else:
+                messages.error(request, f"❌ {message}")
+                
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            messages.error(request, f"❌ خطای سیستمی: {str(e)}")
+            
+            # ثبت خطا در لاگ
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"خطا در ذخیره داده‌ها: {error_details}")
+        
+        # Redirect to preview to see the saved data
+        if 'preview' in request.META.get('HTTP_REFERER', ''):
+            # If we came from preview, go back there
+            return redirect(request.META.get('HTTP_REFERER', ''))
+        else:
+            # Otherwise go to admin edit
+            return redirect('wagtailadmin_pages:edit', page_id)
     
     return JsonResponse({'error': 'فقط درخواست POST مجاز است'}, status=405)
 

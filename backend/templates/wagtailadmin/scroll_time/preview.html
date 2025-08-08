@@ -258,13 +258,16 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // غیرفعال کردن دکمه بعد از کلیک
             const saveButton = document.getElementById('save-button');
             if (saveButton) {
-                saveButton.addEventListener('click', function() {
-                    this.disabled = true;
-                    this.textContent = 'در حال ذخیره...';
-                });
+                // غیرفعال کردن دکمه هنگام ارسال فرم تا از دو بار کلیک جلوگیری شود
+                const saveForm = saveButton.closest('form');
+                if (saveForm) {
+                    saveForm.addEventListener('submit', function() {
+                        saveButton.disabled = true;
+                        saveButton.textContent = 'در حال ذخیره...';
+                    });
+                }
             }
         });
     </script>

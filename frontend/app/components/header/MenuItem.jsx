@@ -3,7 +3,12 @@ import Link from "next/link";
 import clsx from "clsx";
 export default function MenuItem({ title, slug, children }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [isClient, setIsClient] = useState(false);
     const menuRef = useRef(null);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     const handleToggle = () => setIsOpen(!isOpen);
 
@@ -18,7 +23,8 @@ export default function MenuItem({ title, slug, children }) {
             document.removeEventListener("mousedown", handleClickOutside);
     }, []);
     const submenuClassName = clsx(
-        "relative lg:h-auto lg:absolute lg:-z-10 overflow-hidden lg:left-0 lg:top-[95px] w-full lg:px-6 transition-all duration-200 lg:border-b border-[#EEEEEE] dark:border-[#505050] bg-white text-gray-900 dark:bg-gray-900 dark:text-white opacity-0 pointer-events-none -translate-y-1/2 h-0 max-h-0",
+        "relative lg:h-auto lg:absolute lg:-z-10 overflow-hidden lg:left-0 lg:top-[95px] w-full lg:px-6 transition-all duration-200 lg:border-b border-[#EEEEEE] dark:border-[#505050] bg-white text-gray-900 dark:bg-gray-900 dark:text-white",
+        !isClient ? "opacity-0 pointer-events-none -translate-y-1/2 h-0 max-h-0" : 
         `${isOpen ? "opacity-100 pointer-events-auto translate-y-0 h-auto max-h-[1200px]" : "opacity-0 pointer-events-none -translate-y-1/2 h-0 max-h-0"}`,
     );
     <li className="relative bg-white dark:bg-gray-900 border-[#EEEEEE] dark:border-[#505050] last:border-b lg:border-none z-10 lg:px-3 lg:py-9">
@@ -39,7 +45,7 @@ export default function MenuItem({ title, slug, children }) {
                 <div className="bg-white dark:bg-gray-900 lg:px-3 lg:py-9 relative z-10 lg:static lg:z-0">
                     <button
                         className="sub-menu-trigger-button font-medium flex focus:outline-none group items-center border-t border-[#EEEEEE] dark:border-[#505050] w-full py-4 lg:py-0 lg:border-none z-10"
-                        aria-expanded={isOpen}
+                        aria-expanded={isClient ? isOpen : false}
                         aria-controls="submenu-0"
                         aria-haspopup="true"
                         type="button"
@@ -47,7 +53,7 @@ export default function MenuItem({ title, slug, children }) {
                         onClick={handleToggle}
                     >
                         <span
-                            className={`pointer-events-none underline-offset-8 ${isOpen ? "underline" : "no-underline group-focus:underline"}`}
+                            className={`pointer-events-none underline-offset-8 ${isClient && isOpen ? "underline" : "no-underline group-focus:underline"}`}
                         >
                             {title}
                         </span>
@@ -55,7 +61,7 @@ export default function MenuItem({ title, slug, children }) {
                             viewBox="0 0 24 24"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
-                            className={`transition-transform pointer-events-none -mr-2 w-6 h-6 ${isOpen ? "rotate-180" : ""}`}
+                            className={`transition-transform pointer-events-none -mr-2 w-6 h-6 ${isClient && isOpen ? "rotate-180" : ""}`}
                         >
                             <path
                                 d="m8 10 4 4 4-4"
@@ -70,7 +76,7 @@ export default function MenuItem({ title, slug, children }) {
                 <div
                     id="submenu-0"
                     className={submenuClassName}
-                    aria-expanded={isOpen}
+                    aria-expanded={isClient ? isOpen : false}
                 >
                     <div className="px-0 container lg:px-8 flex flex-col lg:flex-row">
                         <div className="flex flex-col lg:w-[26.6666666667%] lg:py-12 gap-3 my-6 lg:my-0">

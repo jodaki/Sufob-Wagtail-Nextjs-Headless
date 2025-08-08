@@ -1,0 +1,216 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block titletag %}{{ page_title }}{% endblock %}
+
+{% block content %}
+    <header class="header">
+        <div class="row">
+            <div class="left">
+                <div class="col">
+                    <h1 class="header-title">
+                        <svg class="icon icon-folder-open-inverse header-title-icon" aria-hidden="true">
+                            <use href="#icon-folder-open-inverse"></use>
+                        </svg>
+                        {{ page_title }}
+                    </h1>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="nice-padding">
+        <!-- آمار کلی -->
+        <div class="row">
+            <div class="col3">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>کل معاملات</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stat-number">{{ total_transactions|floatformat:0 }}</div>
+                        <div class="stat-label">معامله ثبت شده</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col3">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>معاملات موقت</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="stat-number">{{ staged_transactions|floatformat:0 }}</div>
+                        <div class="stat-label">در انتظار تایید</div>
+                        {% if staged_transactions > 0 %}
+                            <a href="{% url 'transaction2_staged' %}" class="button button-small">مشاهده</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col3">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>آمار امروز</h3>
+                    </div>
+                    <div class="card-content">
+                        {% if today_stats %}
+                            <div class="stat-number">{{ today_stats.final_price|floatformat:0 }}</div>
+                            <div class="stat-label">قیمت نهایی (ریال)</div>
+                        {% else %}
+                            <div class="stat-number">-</div>
+                            <div class="stat-label">داده‌ای موجود نیست</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- آخرین واردات -->
+        <div class="row">
+            <div class="col6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>آخرین واردات داده‌ها</h3>
+                        <a href="{% url 'transaction2_logs' %}" class="button button-small button-secondary">مشاهده همه</a>
+                    </div>
+                    <div class="card-content">
+                        {% if recent_imports %}
+                            <table class="listing">
+                                <thead>
+                                    <tr>
+                                        <th>نوع محصول</th>
+                                        <th>تعداد</th>
+                                        <th>وضعیت</th>
+                                        <th>تاریخ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for import in recent_imports %}
+                                        <tr>
+                                            <td>{{ import.get_product_type_display }}</td>
+                                            <td>{{ import.record_count }}</td>
+                                            <td>
+                                                <span class="status-tag {% if import.status == 'success' %}status-live{% elif import.status == 'failed' %}status-draft{% else %}status-scheduled{% endif %}">
+                                                    {{ import.get_status_display }}
+                                                </span>
+                                            </td>
+                                            <td>{{ import.created_at|date:"Y/m/d H:i" }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p class="help">هنوز واردات داده‌ای انجام نشده است.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>آخرین معاملات</h3>
+                    </div>
+                    <div class="card-content">
+                        {% if recent_transactions %}
+                            <table class="listing">
+                                <thead>
+                                    <tr>
+                                        <th>کالا</th>
+                                        <th>نماد</th>
+                                        <th>قیمت نهایی</th>
+                                        <th>تاریخ معامله</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transaction in recent_transactions %}
+                                        <tr>
+                                            <td>{{ transaction.commodity_name|truncatechars:20 }}</td>
+                                            <td>{{ transaction.symbol }}</td>
+                                            <td>{{ transaction.final_price|floatformat:0|default:"-" }}</td>
+                                            <td>{{ transaction.transaction_date }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p class="help">هنوز معامله‌ای ثبت نشده است.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- دکمه‌های اقدامات سریع -->
+        <div class="row">
+            <div class="col12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>اقدامات سریع</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="button-toolbar">
+                            <a href="{% url 'transaction2_import' %}" class="button">واردات داده‌های جدید</a>
+                            <a href="{% url 'transaction2_staged' %}" class="button button-secondary">بررسی معاملات موقت</a>
+                            <a href="{% url 'transaction2_daily' %}" class="button button-secondary">گزارشات روزانه</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .card {
+            background: white;
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #e6e6e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .card-content {
+            padding: 20px;
+        }
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #007cba;
+            line-height: 1;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .status-live {
+            background-color: #007cba;
+            color: white;
+        }
+        .status-draft {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .status-scheduled {
+            background-color: #f39c12;
+            color: white;
+        }
+        .button-toolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+    </style>
+{% endblock %}

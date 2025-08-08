@@ -8,7 +8,7 @@ from django.http import HttpResponseRedirect
 from django.contrib import messages
 from .models import (
     PricePage, PriceIndexPage, PriceData, DataImportLog,
-    MainCategory, Category, SubCategory, ScrollTimeRequest
+    MainCategory, Category, SubCategory, ScrollTimeRequest, AllData
 )
 from .forms import DataImportForm
 
@@ -22,6 +22,20 @@ class PriceDataAdmin(ModelAdmin):
     list_display = ('commodity_name', 'price_date', 'final_price', 'avg_price', 'volume', 'created_at')
     list_filter = ('commodity_name', 'price_date', 'source', 'created_at')
     search_fields = ('commodity_name', 'symbol')
+    inspect_view_enabled = True
+
+
+# AllData ModelAdmin  
+class AllDataAdmin(ModelAdmin):
+    model = AllData
+    menu_label = 'تمام داده‌ها (All Data)'
+    menu_icon = 'table'
+    menu_order = 201
+    list_display = ('commodity_name', 'symbol', 'transaction_date', 'final_price', 'contract_volume', 'transaction_value', 'created_at')
+    list_filter = ('transaction_date', 'commodity_name', 'source', 'created_at')
+    search_fields = ('commodity_name', 'symbol', 'producer', 'supplier')
+    ordering = ('-transaction_date', 'symbol')
+    list_per_page = 50
     inspect_view_enabled = True
 
 
@@ -166,35 +180,34 @@ class CategoryModelAdminGroup(ModelAdminGroup):
 
 
 # گروه‌بندی مدل‌های اصلی قیمت
-class PriceModelAdminGroup(ModelAdminGroup):
-    menu_label = 'مدیریت قیمت‌ها'
-    menu_icon = 'table'
+
+# گروه‌بندی همه مدل‌های قیمت و Scroll Time در یک گروه
+class PricesModelAdminGroup(ModelAdminGroup):
+    menu_label = "مدیریت قیمت‌ها"
+    menu_icon = "folder-open-inverse"
     menu_order = 200
-    items = (PriceDataAdmin, DataImportLogAdmin, PriceDataImportAdmin)
+    items = (
+        PriceDataAdmin,
+        AllDataAdmin,
+        DataImportLogAdmin, 
+        MainCategoryAdmin,
+        CategoryAdmin,
+        SubCategoryAdmin,
+        ScrollTimeRequestAdmin,
+        PriceDataImportAdmin
+    )
 
+# ثبت گروه اصلی
+modeladmin_register(PricesModelAdminGroup)
 
-# گروه‌بندی Scroll Time
-class ScrollTimeModelAdminGroup(ModelAdminGroup):
-    menu_label = 'Scroll Time'
-    menu_icon = 'download'
-    menu_order = 220
-    items = (ScrollTimeRequestAdmin,)
-
-
-# Register the groups
-modeladmin_register(PriceModelAdminGroup)
-modeladmin_register(CategoryModelAdminGroup)
-modeladmin_register(ScrollTimeModelAdminGroup)
-
-
-# اضافه کردن منوی Scroll Time Dashboard به sidebar
+# اضافه کردن داشبورد Scroll Time به همان گروه sidebar
 @hooks.register('register_admin_menu_item')
 def register_scroll_time_dashboard_menu_item():
     return MenuItem(
         'داشبورد Scroll Time',
         '/sufobadmin/scroll-time/dashboard/',
         classnames='icon icon-view',
-        order=999
+        order=201
     )
 
 # اضافه کردن منوی Scroll Time به sidebar

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load static wagtailcore_tags wagtailimages_tags %}
+
+{% block body_class %}template-scrolltimepage{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h1 class="mb-4">{{ page.title }}</h1>
+
+    {% if page.description %}
+    <div class="mb-4">
+        {{ page.description|richtext }}
+    </div>
+    {% endif %}
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2 class="h5 mb-0">تنظیمات API</h2>
+        </div>
+        <div class="card-body">
+            <p><strong>آدرس API:</strong> {{ page.api_url }}</p>
+            <p><strong>تاریخ شروع:</strong> {{ page.from_date }}</p>
+            <p><strong>تاریخ پایان:</strong> {{ page.to_date }}</p>
+            <p><strong>دسته‌بندی:</strong> {{ page.main_cat }} / {{ page.cat }} / {{ page.sub_cat }}</p>
+            <p><strong>تولیدکننده:</strong> {{ page.producer }}</p>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2 class="h5 mb-0">وضعیت دریافت داده‌ها</h2>
+        </div>
+        <div class="card-body">
+            {% if messages %}
+            <div class="messages mb-4">
+                {% for message in messages %}
+                <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            {% if page.last_fetch_time %}
+            <p><strong>آخرین دریافت:</strong> {{ page.last_fetch_time }}</p>
+            <p><strong>تعداد رکورد آخرین دریافت:</strong> {{ page.last_fetch_count }}</p>
+            {% else %}
+            <p>تا کنون دریافتی انجام نشده است.</p>
+            {% endif %}
+
+        </div>
+    </div>
+
+    {% if saved_data %}
+    <div class="card">
+        <div class="card-header">
+            <h2 class="h5 mb-0">داده‌های ذخیره شده</h2>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>نام کالا</th>
+                            <th>نماد</th>
+                            <th>تاریخ معامله</th>
+                            <th>قیمت نهایی</th>
+                            <th>حجم معامله</th>
+                            <th>ارزش معامله</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in saved_data %}
+                        <tr>
+                            <td>{{ item.commodity_name }}</td>
+                            <td>{{ item.symbol }}</td>
+                            <td>{{ item.transaction_date }}</td>
+                            <td>{{ item.final_price }}</td>
+                            <td>{{ item.contract_volume }}</td>
+                            <td>{{ item.transaction_value }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

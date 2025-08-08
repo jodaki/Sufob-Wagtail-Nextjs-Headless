@@ -1,5 +1,78 @@
-{% extends "wagtailadmin/base.html" %}
-{% load i18n %}
+{% extends "wagtailadmin/base.html" %}                                <a href="{% url 'wagtailadmin_pages:edit' 10 %}" class="button button-primary">
+                                    📅 مشاهده صفحه Scroll Time
+                                </a>
+                                <a href="/sufobadmin/modeladmin/data_management/alldata/" class="button button-secondary">
+                                    📋 لیست کامل داده‌ها
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col12">
+                        <div class="card">
+                            <h3>🔍 راهنمای استفاده</h3>
+                            <p>برای مشاهده و مدیریت داده‌ها، می‌توانید از لینک‌های زیر استفاده کنید:</p>
+                            <ul>
+                                <li>
+                                    <strong>مشاهده داده‌ها:</strong> 
+                                    <a href="/sufobadmin/modeladmin/data_management/alldata/">لیست کامل داده‌ها</a>
+                                </li>
+                                <li>
+                                    <strong>ویرایش صفحه Scroll Time:</strong>
+                                    <a href="{% url 'wagtailadmin_pages:edit' 10 %}">صفحه Scroll Time با ID=10</a>
+                                </li>
+                                <li>
+                                    <strong>پیش‌نمایش و دریافت داده‌ها:</strong>
+                                    <a href="{% url 'wagtailadmin_pages:preview' 10 %}" target="_blank">پیش‌نمایش صفحه Scroll Time</a>
+                                </li>
+                            </ul>
+                            <p>
+                                <strong>نکته مهم:</strong> برای دسترسی به داده‌های ذخیره شده، از آدرس 
+                                <code>/sufobadmin/modeladmin/data_management/alldata/</code> استفاده کنید، نه از 
+                                <code>/sufobadmin/data_management/alldata/</code>.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- جدول آخرین داده‌ها -->
+                <div class="row">
+                    <div class="col12">
+                        <div class="card">
+                            <h3>📋 آخرین داده‌های ذخیره شده</h3>
+                            <table class="listing">
+                                <thead>
+                                    <tr>
+                                        <th>نام کالا</th>
+                                        <th>نماد</th>
+                                        <th>تاریخ معامله</th>
+                                        <th>قیمت نهایی</th>
+                                        <th>حجم معامله</th>
+                                        <th>ارزش معامله</th>
+                                        <th>تاریخ ذخیره</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in latest_data %}
+                                    <tr>
+                                        <td>{{ item.commodity_name }}</td>
+                                        <td>{{ item.symbol }}</td>
+                                        <td>{{ item.transaction_date }}</td>
+                                        <td>{{ item.final_price }}</td>
+                                        <td>{{ item.trade_volume }}</td>
+                                        <td>{{ item.trade_value }}</td>
+                                        <td>{{ item.created_at }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" style="text-align: center;">هیچ داده‌ای یافت نشد.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>oad i18n %}
 
 {% block titletag %}داشبورد مدیریت داده‌ها{% endblock %}
 
@@ -9,7 +82,7 @@
             <div class="left">
                 <div class="col">
                     <h1 class="header-title">📊 داشبورد مدیریت داده‌ها</h1>
-                    <p class="header-subtitle">مشاهده و مدیریت داده‌های تجمیعی</p>
+                    <p class="header-subtitle">مشاهده و مدیریت داده‌های بورس</p>
                 </div>
             </div>
         </div>
@@ -21,31 +94,10 @@
                 
                 <!-- آمار کلی -->
                 <div class="row">
-                    <div class="col3">
+                    <div class="col12">
                         <div class="card text-center">
-                            <h3>📅 داده‌های روزانه</h3>
-                            <div class="stat-number">{{ daily_count }}</div>
-                            <p>رکورد</p>
-                        </div>
-                    </div>
-                    <div class="col3">
-                        <div class="card text-center">
-                            <h3>📆 داده‌های هفتگی</h3>
-                            <div class="stat-number">{{ weekly_count }}</div>
-                            <p>رکورد</p>
-                        </div>
-                    </div>
-                    <div class="col3">
-                        <div class="card text-center">
-                            <h3>🗓️ داده‌های ماهانه</h3>
-                            <div class="stat-number">{{ monthly_count }}</div>
-                            <p>رکورد</p>
-                        </div>
-                    </div>
-                    <div class="col3">
-                        <div class="card text-center">
-                            <h3>📊 داده‌های سالانه</h3>
-                            <div class="stat-number">{{ yearly_count }}</div>
+                            <h3>� داده‌های ذخیره شده</h3>
+                            <div class="stat-number">{{ alldata_count }}</div>
                             <p>رکورد</p>
                         </div>
                     </div>
@@ -55,47 +107,11 @@
                 <div class="row">
                     <div class="col12">
                         <div class="card">
-                            <h3>⚙️ عملیات تجمیع داده‌ها</h3>
+                            <h3>⚙️ عملیات</h3>
                             <div class="button-group">
-                                <form method="post" action="{% url 'data_management_aggregate' %}" style="display: inline;">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="type" value="daily">
-                                    <button type="submit" class="button button-primary">
-                                        📅 تجمیع روزانه
-                                    </button>
-                                </form>
-                                
-                                <form method="post" action="{% url 'data_management_aggregate' %}" style="display: inline;">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="type" value="weekly">
-                                    <button type="submit" class="button button-primary">
-                                        📆 تجمیع هفتگی
-                                    </button>
-                                </form>
-                                
-                                <form method="post" action="{% url 'data_management_aggregate' %}" style="display: inline;">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="type" value="monthly">
-                                    <button type="submit" class="button button-primary">
-                                        🗓️ تجمیع ماهانه
-                                    </button>
-                                </form>
-                                
-                                <form method="post" action="{% url 'data_management_aggregate' %}" style="display: inline;">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="type" value="yearly">
-                                    <button type="submit" class="button button-primary">
-                                        📊 تجمیع سالانه
-                                    </button>
-                                </form>
-                                
-                                <form method="post" action="{% url 'data_management_aggregate' %}" style="display: inline; margin-left: 20px;">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="type" value="all">
-                                    <button type="submit" class="button button-secondary" style="background: orange;">
-                                        🔄 تجمیع همه موارد
-                                    </button>
-                                </form>
+                                <a href="{% url 'wagtailadmin_pages:edit' 10 %}" class="button button-primary">
+                                    � مشاهده صفحه Scroll Time
+                                </a>
                             </div>
                         </div>
                     </div>

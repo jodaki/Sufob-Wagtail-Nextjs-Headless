@@ -1,0 +1,101 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+
+{% block titletag %}گزارشات واردات داده‌ها - {{ site_name }}{% endblock %}
+
+{% block content %}
+    <header class="header">
+        <div class="row">
+            <div class="left">
+                <div class="col">
+                    <h1 class="icon icon-doc-full-inverse">گزارشات واردات داده‌ها</h1>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="nice-padding">
+        <div class="help-block">
+            <p>فهرست تمام عملیات واردات داده‌ها به سیستم</p>
+        </div>
+
+        {% if logs %}
+            <div class="table-responsive">
+                <table class="listing">
+                    <thead>
+                        <tr>
+                            <th>تاریخ ثبت</th>
+                            <th>نوع محصول</th>
+                            <th>از تاریخ</th>
+                            <th>تا تاریخ</th>
+                            <th>تعداد رکورد</th>
+                            <th>وضعیت</th>
+                            <th>نوع افزودن</th>
+                            <th class="actions">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.created_at|date:'Y/m/d H:i' }}</td>
+                            <td>{{ log.product_type }}</td>
+                            <td>{{ log.from_date|default:'-' }}</td>
+                            <td>{{ log.to_date|default:'-' }}</td>
+                            <td>{{ log.record_count }}</td>
+                            <td>
+                                {% if log.status == 'ذخیره شده' %}
+                                    <span class="status-tag primary">{{ log.status }}</span>
+                                {% elif log.status == 'رد شد' %}
+                                    <span class="status-tag warning">{{ log.status }}</span>
+                                {% else %}
+                                    <span class="status-tag">{{ log.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ log.add_type }}</td>
+                            <td class="actions">
+                                <form method="post" action="?delete={{ log.id }}" style="display:inline;" 
+                                      onsubmit="return confirm('آیا از حذف این گزارش اطمینان دارید؟');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="button button-small no">حذف</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- صفحه‌بندی -->
+            {% if logs.has_other_pages %}
+            <nav class="pagination" role="navigation" aria-label="pagination">
+                {% if logs.has_previous %}
+                    <a href="?page={{ logs.previous_page_number }}" class="pagination-previous" aria-label="Previous page">
+                        <span class="icon icon-arrow-left" aria-hidden="true"></span>
+                        قبلی
+                    </a>
+                {% endif %}
+
+                <div class="pagination-info">
+                    صفحه {{ logs.number }} از {{ logs.paginator.num_pages }}
+                </div>
+
+                {% if logs.has_next %}
+                    <a href="?page={{ logs.next_page_number }}" class="pagination-next" aria-label="Next page">
+                        بعدی
+                        <span class="icon icon-arrow-right" aria-hidden="true"></span>
+                    </a>
+                {% endif %}
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="help-block">
+                <p>هیچ گزارش واردات‌ی یافت نشد.</p>
+            </div>
+        {% endif %}
+
+        <div class="actions">
+            <a href="{% url 'transaction_import_export' %}" class="button button-primary">واردات داده‌های جدید</a>
+            <a href="{% url 'transaction_home' %}" class="button button-secondary">بازگشت به صفحه اصلی</a>
+        </div>
+    </div>
+{% endblock %}

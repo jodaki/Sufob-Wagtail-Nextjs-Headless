@@ -1,0 +1,355 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block titletag %}واردات/صادرات داده‌ها - {{ site_name }}{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+    <style>
+        .jalali_date-input, .persian-datepicker {
+            z-index: 9999 !important;
+            background: #fff !important;
+            color: #222 !important;
+            font-family: inherit !important;
+        }
+        .persian-datepicker-container {
+            z-index: 99999 !important;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007d7e;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result-box {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #007d7e;
+            background: #f8f9fa;
+        }
+        .error-box {
+            border-left-color: #e74c3c;
+            background: #fdf2f2;
+            color: #e74c3c;
+        }
+        .success-box {
+            border-left-color: #27ae60;
+            background: #f2fdf2;
+            color: #27ae60;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <header class="header">
+        <div class="row">
+            <div class="left">
+                <div class="col">
+                    <h1 class="icon icon-download">واردات/صادرات داده‌ها</h1>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="nice-padding">
+        <div class="help-block">
+            <p>از طریق این صفحه می‌توانید داده‌های جدید را از منابع خارجی دریافت و در سیستم ذخیره کنید.</p>
+        </div>
+
+        <form id="import-export-form" class="form">
+            <div class="row">
+                <div class="col6">
+                    <fieldset>
+                        <legend>تنظیمات واردات</legend>
+                        
+                        <div class="field">
+                            <label class="field__label" for="product_type">نوع محصول:</label>
+                            <div class="field__input">
+                                <select id="product_type" name="product_type" required>
+                                    <option value="iron_concentrate">کنسانتره آهن</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="field__label">رفتار با رکوردهای تکراری:</label>
+                            <div class="field__input">
+                                <div class="choice_field">
+                                    <input type="radio" id="remove_duplicates" name="duplicate_action" value="remove" checked>
+                                    <label for="remove_duplicates">حذف تکراری‌ها</label>
+                                </div>
+                                <div class="choice_field">
+                                    <input type="radio" id="replace_duplicates" name="duplicate_action" value="replace">
+                                    <label for="replace_duplicates">جایگزینی تکراری‌ها</label>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+
+                <div class="col6">
+                    <fieldset>
+                        <legend>بازه زمانی</legend>
+                        
+                        <div class="field">
+                            <label class="field__label" for="from_date">تاریخ شروع (شمسی):</label>
+                            <div class="field__input">
+                                <input type="text" id="from_date" name="from_date" class="jalali_date-input" autocomplete="off" required readonly>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label class="field__label" for="to_date">تاریخ پایان (شمسی):</label>
+                            <div class="field__input">
+                                <input type="text" id="to_date" name="to_date" class="jalali_date-input" autocomplete="off" required readonly>
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="button button-primary">شروع واردات</button>
+                <a href="{% url 'transaction_home' %}" class="button button-secondary">بازگشت</a>
+            </div>
+        </form>
+
+        <!-- نتایج -->
+        <div id="loading" style="display:none;">
+            <div class="result-box">
+                <span class="loader"></span>
+                در حال بارگذاری اطلاعات...
+            </div>
+        </div>
+
+        <div id="result"></div>
+
+        <!-- دکمه‌های عملیات -->
+        <div id="db-actions" style="display:none;">
+            <div class="actions">
+                <button id="btn-insert-db" class="button button-primary">تایید و ذخیره در دیتابیس</button>
+            </div>
+        </div>
+
+        <!-- گزارشات اضافی -->
+        <div class="actions">
+            <button id="show-action-log" class="button button-secondary">نمایش گزارشات تفصیلی</button>
+        </div>
+        
+        <div id="action-log" style="display:none;">
+            <div class="help-block">
+                <h3>گزارشات عملیات:</h3>
+                <div id="log-content"></div>
+            </div>
+        </div>
+
+        <!-- نمایش جدول نمونه -->
+        <div id="sample-table-section" style="display:none;">
+            <div class="help-block">
+                <h3>نمونه داده‌های دریافت شده:</h3>
+                <div class="table-responsive">
+                    <table class="listing" id="sample-table">
+                        <thead>
+                            <tr>
+                                <th>نام کالا</th>
+                                <th>نماد</th>
+                                <th>تالار</th>
+                                <th>تولیدکننده</th>
+                                <th>قیمت پایانی</th>
+                                <th>ارزش معامله</th>
+                                <th>تاریخ معامله</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sample-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/persian-date@1.1.0/dist/persian-date.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+    <script>
+    $(document).ready(function() {
+        // تنظیم تقویم شمسی
+        $('.jalali_date-input').persianDatepicker({
+            format: 'YYYY/MM/DD',
+            initialValue: false,
+            autoClose: true,
+            toolbox: { calendarSwitch: { enabled: false } },
+            observer: true,
+            altField: this,
+            altFormat: 'YYYY/MM/DD',
+            onShow: function(){
+                $('.persian-datepicker-container').css('z-index', '99999');
+            }
+        });
+
+        // نمایش/مخفی کردن گزارشات
+        $('#show-action-log').on('click', function(){
+            $('#action-log').toggle();
+        });
+
+        // تابع اضافه کردن پیام به گزارشات
+        window.actionLog = function(msg) {
+            $('#log-content').append('<div style="margin-bottom: 5px;">' + msg + '</div>');
+        };
+
+        let extractedData = [];
+
+        // ارسال فرم واردات
+        $('#import-export-form').on('submit', function(e) {
+            e.preventDefault();
+            
+            // پاک کردن نتایج قبلی
+            $('#result').empty();
+            $('#sample-table-section').hide();
+            $('#loading').show();
+            $('#db-actions').hide();
+            $('#action-log').hide();
+            $('#log-content').empty();
+            
+            actionLog('درخواست بارگذاری اطلاعات ارسال شد...');
+            
+            // ارسال درخواست AJAX
+            $.ajax({
+                url: '{% url "transaction_import_export_api" %}',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    from_date: $('#from_date').val(),
+                    to_date: $('#to_date').val(),
+                    product_type: $('#product_type').val(),
+                    duplicate_action: $('input[name="duplicate_action"]:checked').val()
+                }),
+                success: function(data) {
+                    $('#loading').hide();
+                    
+                    if(data.success) {
+                        let count = data.count || 0;
+                        let sample = data.sample;
+                        
+                        // نمایش نتیجه موفقیت‌آمیز
+                        let resultHtml = '<div class="result-box success-box">';
+                        resultHtml += '<strong>تعداد رکورد دریافت شده: </strong>' + count + '<br>';
+                        resultHtml += '<strong>داده‌ها در جدول موقت ذخیره شدند.</strong>';
+                        resultHtml += '</div>';
+                        $('#result').html(resultHtml);
+                        
+                        actionLog('اطلاعات با موفقیت دریافت شد. تعداد رکورد: ' + count);
+                        
+                        // نمایش نمونه داده
+                        if(sample) {
+                            actionLog('نمونه رکورد: ' + JSON.stringify(sample, null, 2));
+                            
+                            // اضافه کردن به جدول نمونه
+                            let rowHtml = '<tr>';
+                            rowHtml += '<td>' + (sample.commodity_name || '') + '</td>';
+                            rowHtml += '<td>' + (sample.symbol || '') + '</td>';
+                            rowHtml += '<td>-</td>';
+                            rowHtml += '<td>-</td>';
+                            rowHtml += '<td>' + (sample.final_price || '') + '</td>';
+                            rowHtml += '<td>-</td>';
+                            rowHtml += '<td>' + (sample.transaction_date || '') + '</td>';
+                            rowHtml += '</tr>';
+                            $('#sample-table-body').html(rowHtml);
+                            $('#sample-table-section').show();
+                        }
+                        
+                        actionLog('داده‌ها آماده تایید و ذخیره نهایی هستند.');
+                        $('#db-actions').show();
+                        
+                    } else {
+                        let resultHtml = '<div class="result-box error-box">';
+                        resultHtml += '<strong>خطا: </strong>' + (data.error || 'خطای نامشخص');
+                        resultHtml += '</div>';
+                        $('#result').html(resultHtml);
+                        
+                        actionLog('خطا در دریافت اطلاعات: ' + (data.error || 'خطای نامشخص'));
+                    }
+                },
+                error: function(xhr) {
+                    $('#loading').hide();
+                    
+                    let msg = 'خطای ارتباط با سرور';
+                    if(xhr.responseJSON && xhr.responseJSON.error) {
+                        msg = xhr.responseJSON.error;
+                    }
+                    
+                    let resultHtml = '<div class="result-box error-box">';
+                    resultHtml += '<strong>خطا: </strong>' + msg;
+                    resultHtml += '</div>';
+                    $('#result').html(resultHtml);
+                    
+                    actionLog('خطا در بارگذاری اطلاعات: ' + msg);
+                }
+            });
+        });
+
+        // تایید و ذخیره نهایی
+        $('#btn-insert-db').on('click', function() {
+            $(this).prop('disabled', true).text('در حال پردازش...');
+            
+            $('#result').append('<div class="result-box"><span class="loader"></span>در حال ثبت نهایی در دیتابیس...</div>');
+            actionLog('درخواست ثبت نهایی در دیتابیس ارسال شد...');
+            
+            $.ajax({
+                url: '{% url "transaction_confirm_staged" %}',
+                method: 'POST',
+                success: function(data) {
+                    $('#btn-insert-db').prop('disabled', false).text('تایید و ذخیره در دیتابیس');
+                    $('.loader').parent().remove();
+                    
+                    let resultHtml = '<div class="result-box success-box">';
+                    resultHtml += '<strong>ثبت نهایی انجام شد!</strong><br>';
+                    resultHtml += 'تعداد رکوردهای موفق: <strong>' + (data.success || 0) + '</strong><br>';
+                    resultHtml += 'تعداد رکوردهای تکراری: <strong>' + (data.duplicate || 0) + '</strong><br>';
+                    resultHtml += 'تعداد رکوردهای خطادار: <strong>' + (data.error || 0) + '</strong>';
+                    
+                    if(data.error_list && data.error_list.length > 0) {
+                        resultHtml += '<br><strong>خطاها:</strong><ul>';
+                        data.error_list.forEach(function(err) {
+                            resultHtml += '<li>' + err + '</li>';
+                        });
+                        resultHtml += '</ul>';
+                    }
+                    resultHtml += '</div>';
+                    
+                    $('#result').append(resultHtml);
+                    $('#db-actions').hide();
+                    
+                    actionLog('ثبت نهایی کامل شد. موفق: ' + (data.success || 0) + ', تکراری: ' + (data.duplicate || 0) + ', خطادار: ' + (data.error || 0));
+                },
+                error: function(xhr) {
+                    $('#btn-insert-db').prop('disabled', false).text('تایید و ذخیره در دیتابیس');
+                    $('.loader').parent().remove();
+                    
+                    let msg = 'خطای ارتباط با سرور';
+                    if(xhr.responseJSON && xhr.responseJSON.error) {
+                        msg = xhr.responseJSON.error;
+                    }
+                    
+                    let resultHtml = '<div class="result-box error-box">';
+                    resultHtml += '<strong>خطا: </strong>' + msg;
+                    resultHtml += '</div>';
+                    $('#result').append(resultHtml);
+                    
+                    actionLog('خطا در ثبت نهایی: ' + msg);
+                }
+            });
+        });
+    });
+    </script>
+{% endblock %}

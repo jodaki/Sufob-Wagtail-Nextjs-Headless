@@ -3,7 +3,7 @@ from django.db.models import Avg, Sum, Min, Max, Count
 from django.utils import timezone
 from decimal import Decimal
 from datetime import datetime, date, timedelta
-import jdatetime
+# import jdatetime - disabled for now
 import logging
 
 from prices.models import PriceData
