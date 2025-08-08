@@ -13,7 +13,7 @@ from django.utils.decorators import method_decorator
 import json
 import logging
 
-from .models import ScrollTimeRequest, MainCategory, Category, SubCategory
+from price_data_ingestion.models import ScrollTimeRequest, MainCategory, Category, SubCategory
 from .forms import ScrollTimeRequestForm
 from .services import ScrollTimeService, DataPreviewService
 

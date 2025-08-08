@@ -25,6 +25,7 @@ urlpatterns = [
     path("api/v2/", api_router.urls),
     
     path("prices/", include("prices.urls")),
+    path("data-management/", include("data_management.urls")),
     path("view-api/update_view_count/<int:blog_page_id>/", update_view_count),
     path("comments/", include(sufob_comments_urls)),
     path("health-check/", health_check, name="health_check"),

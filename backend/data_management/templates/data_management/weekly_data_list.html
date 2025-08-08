@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Tahoma', 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            direction: rtl;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 2em;
+        }
+        
+        .nav-menu {
+            background-color: #34495e;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            padding: 15px;
+        }
+        
+        .nav-menu ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .nav-menu li a {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            font-weight: bold;
+        }
+        
+        .nav-menu li a:hover {
+            background-color: #2980b9;
+        }
+        
+        .info-bar {
+            background-color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .data-table th {
+            background-color: #8e44ad;
+            color: white;
+            padding: 12px 8px;
+            text-align: right;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .data-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #ecf0f1;
+            text-align: right;
+            font-size: 0.85em;
+        }
+        
+        .data-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .pagination {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .pagination a, .pagination span {
+            display: inline-block;
+            padding: 10px 15px;
+            margin: 0 5px;
+            text-decoration: none;
+            border-radius: 5px;
+            background-color: #8e44ad;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .pagination span {
+            background-color: #7f8c8d;
+        }
+        
+        .pagination a:hover {
+            background-color: #7d3c98;
+        }
+        
+        .no-data {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 40px;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .nav-menu ul {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .data-table {
+                font-size: 0.8em;
+            }
+            
+            .data-table th, .data-table td {
+                padding: 8px 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ title }}</h1>
+        
+        <nav class="nav-menu">
+            <ul>
+                <li><a href="{% url 'data_management:summary' %}">خلاصه</a></li>
+                <li><a href="{% url 'data_management:all_records' %}">همه رکوردها</a></li>
+                <li><a href="{% url 'data_management:daily' %}">روزانه</a></li>
+                <li><a href="{% url 'data_management:weekly' %}">هفتگی</a></li>
+                <li><a href="{% url 'data_management:monthly' %}">ماهانه</a></li>
+                <li><a href="{% url 'data_management:yearly' %}">سالانه</a></li>
+            </ul>
+        </nav>
+        
+        <div class="info-bar">
+            مجموع {{ total }} رکورد تجمیع شده هفتگی - صفحه {{ page }}
+        </div>
+        
+        {% if records %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>شروع هفته</th>
+                    <th>پایان هفته</th>
+                    <th>سال</th>
+                    <th>شماره هفته</th>
+                    <th>متوسط قیمت نهایی</th>
+                    <th>حداقل قیمت</th>
+                    <th>حداکثر قیمت</th>
+                    <th>مجموع حجم قراردادها</th>
+                    <th>تعداد رکوردها</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr>
+                    <td>{{ record.week_start_date|date:"Y/m/d" }}</td>
+                    <td>{{ record.week_end_date|date:"Y/m/d" }}</td>
+                    <td>{{ record.year }}</td>
+                    <td>{{ record.week_number }}</td>
+                    <td>{{ record.avg_final_price|floatformat:2|default:"—" }}</td>
+                    <td>{{ record.min_price|floatformat:2|default:"—" }}</td>
+                    <td>{{ record.max_price|floatformat:2|default:"—" }}</td>
+                    <td>{{ record.total_contracts_volume|default:"—" }}</td>
+                    <td>{{ record.records_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div class="pagination">
+            {% if has_prev %}
+                <a href="?page={{ page|add:'-1' }}">« قبلی</a>
+            {% else %}
+                <span>« قبلی</span>
+            {% endif %}
+            
+            <span>صفحه {{ page }}</span>
+            
+            {% if has_next %}
+                <a href="?page={{ page|add:'1' }}">بعدی »</a>
+            {% else %}
+                <span>بعدی »</span>
+            {% endif %}
+        </div>
+        
+        {% else %}
+        <div class="no-data">
+            هیچ داده تجمیع شده هفتگی‌ای یافت نشد.
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -6,7 +6,7 @@ from datetime import datetime, date, timedelta
 # import jdatetime - disabled for now
 import logging
 
-from prices.models import PriceData
+from price_models.models import PriceData
 from .models import DailyData, WeeklyData, MonthlyData, YearlyData, DataAggregationLog
 
 logger = logging.getLogger(__name__)

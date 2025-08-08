@@ -59,7 +59,10 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "blog",
     "streams",
-    "prices",
+    "prices",  # اپلیکیشن قدیمی - برای سازگاری
+    "price_display",  # 🧩 نمایش صفحات قیمت
+    "price_models",  # 🧩 مدل‌های مشترک قیمت
+    "price_data_ingestion",  # 🧩 مصرف و پردازش داده‌های قیمت
     "sufob_settings",
     "sufob_users",
     "data_management",  # 🧩 مدیریت داده‌ها

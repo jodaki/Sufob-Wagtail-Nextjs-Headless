@@ -1,14 +1,14 @@
-from wagtail.contrib.modeladmin.options import ModelAdmin, modeladmin_register
+from wagtail.contrib.modeladmin.options import ModelAdmin, modeladmin_register, ModelAdminGroup
 from wagtail import hooks
 from django.urls import path, reverse
 from django.utils.html import format_html
 from django.http import HttpResponseRedirect
-from .models import AllData
+from .models import AllData, DailyData, WeeklyData, MonthlyData, YearlyData, DataAggregationLog
 
 
 class AllDataAdmin(ModelAdmin):
     model = AllData
-    menu_label = 'تمام داده‌ها (All Data)'
+    menu_label = 'همه رکوردها (All Records)'
     menu_icon = 'table'
     menu_order = 100
     add_to_settings_menu = False
@@ -24,8 +24,81 @@ class AllDataAdmin(ModelAdmin):
         return qs.select_related()
 
 
-# ثبت مدل در Wagtail Admin
-modeladmin_register(AllDataAdmin)
+class DailyDataAdmin(ModelAdmin):
+    model = DailyData
+    menu_label = 'روزانه (Daily)'
+    menu_icon = 'date'
+    menu_order = 200
+    add_to_settings_menu = False
+    exclude_from_explorer = False
+    list_display = ['trade_date', 'trade_date_shamsi', 'avg_final_price', 'avg_weighted_final_price', 'total_contracts_volume', 'records_count']
+    list_filter = ['trade_date']
+    search_fields = ['trade_date_shamsi']
+    ordering = ['-trade_date']
+    list_per_page = 50
+
+
+class WeeklyDataAdmin(ModelAdmin):
+    model = WeeklyData
+    menu_label = 'هفتگی (Weekly)'
+    menu_icon = 'view'
+    menu_order = 300
+    add_to_settings_menu = False
+    exclude_from_explorer = False
+    list_display = ['week_start_date', 'week_end_date', 'year', 'week_number', 'avg_final_price', 'total_contracts_volume', 'records_count']
+    list_filter = ['year', 'week_start_date']
+    ordering = ['-week_start_date']
+    list_per_page = 50
+
+
+class MonthlyDataAdmin(ModelAdmin):
+    model = MonthlyData
+    menu_label = 'ماهانه (Monthly)'
+    menu_icon = 'calendar'
+    menu_order = 400
+    add_to_settings_menu = False
+    exclude_from_explorer = False
+    list_display = ['month_shamsi', 'year', 'month', 'avg_final_price', 'total_contracts_volume', 'records_count']
+    list_filter = ['year', 'month']
+    ordering = ['-year', '-month']
+    list_per_page = 50
+
+
+class YearlyDataAdmin(ModelAdmin):
+    model = YearlyData
+    menu_label = 'سالانه (Yearly)'
+    menu_icon = 'date'
+    menu_order = 500
+    add_to_settings_menu = False
+    exclude_from_explorer = False
+    list_display = ['year', 'avg_final_price', 'total_contracts_volume', 'records_count']
+    list_filter = ['year']
+    ordering = ['-year']
+    list_per_page = 50
+
+
+class DataAggregationLogAdmin(ModelAdmin):
+    model = DataAggregationLog
+    menu_label = 'لاگ تجمیع (Aggregation Log)'
+    menu_icon = 'doc-full'
+    menu_order = 600
+    add_to_settings_menu = False
+    exclude_from_explorer = False
+    list_display = ['aggregation_type', 'start_time', 'end_time', 'success', 'records_processed']
+    list_filter = ['aggregation_type', 'success', 'start_time']
+    ordering = ['-start_time']
+    list_per_page = 50
+
+
+class DataManagementGroup(ModelAdminGroup):
+    menu_label = 'مدیریت داده‌ها'
+    menu_icon = 'folder-open-inverse'
+    menu_order = 200
+    items = (AllDataAdmin, DailyDataAdmin, WeeklyDataAdmin, MonthlyDataAdmin, YearlyDataAdmin, DataAggregationLogAdmin)
+
+
+# ثبت گروه مدل‌ها در Wagtail Admin
+modeladmin_register(DataManagementGroup)
 
 
 # اضافه کردن دکمه‌های عملیاتی به admin

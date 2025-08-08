@@ -1,6 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
-from .models import PriceData, MainCategory, Category, SubCategory, ScrollTimeRequest
+from price_models.models import PriceData
+from price_data_ingestion.models import MainCategory, Category, SubCategory, ScrollTimeRequest
 from datetime import date, timedelta
 import re
 

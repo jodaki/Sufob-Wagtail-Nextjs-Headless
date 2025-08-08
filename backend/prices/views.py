@@ -4,7 +4,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
 from django.http import JsonResponse
-from .models import PriceData, DataImportLog
+from price_models.models import PriceData, DataImportLog
 
 # Create your views here.
 

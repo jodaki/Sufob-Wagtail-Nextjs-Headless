@@ -7,7 +7,8 @@ import logging
 from typing import Dict, List, Any, Optional
 from datetime import datetime, date
 from django.conf import settings
-from .models import ScrollTimeRequest, PriceData, DataImportLog
+from price_data_ingestion.models import ScrollTimeRequest
+from price_models.models import PriceData, DataImportLog
 from data_management.models import AllData as DataManagementAllData
 
 logger = logging.getLogger(__name__)

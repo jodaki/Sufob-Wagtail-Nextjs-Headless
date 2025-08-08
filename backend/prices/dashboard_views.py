@@ -6,7 +6,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import reverse
 from django.http import JsonResponse
 from wagtail.admin import messages
-from .models import ScrollTimeRequest, MainCategory, Category, SubCategory, PriceData
+from price_data_ingestion.models import ScrollTimeRequest, MainCategory, Category, SubCategory
+from price_models.models import PriceData
 from .forms import ScrollTimeRequestForm
 
 

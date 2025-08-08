@@ -221,7 +221,7 @@ export const getPriceIndexPages = async () => {
     const apiUrl = getApiUrl();
     return await fetch(
         `${apiUrl}/api/v2/pages/?${new URLSearchParams({
-            type: "prices.PriceIndexPage",
+            type: "price_display.PriceIndexPage",
             fields: "intro",
         })}`,
         {
@@ -237,7 +237,7 @@ export const getPricePages = async () => {
     const apiUrl = getApiUrl();
     return await fetch(
         `${apiUrl}/api/v2/pages/?${new URLSearchParams({
-            type: "prices.PricePage",
+            type: "price_display.PricePage",
             fields: [
                 "id",
                 "title",
@@ -261,7 +261,7 @@ export const getPricePageBySlug = async (slug) => {
     const apiUrl = getApiUrl();
     const pages = await fetch(
         `${apiUrl}/api/v2/pages/?${new URLSearchParams({
-            type: "prices.PricePage",
+            type: "price_display.PricePage",
             slug: slug,
             fields: [
                 "id",

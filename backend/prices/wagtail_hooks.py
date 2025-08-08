@@ -6,10 +6,10 @@ from wagtail.contrib.modeladmin.options import ModelAdmin, modeladmin_register, 
 from wagtail.contrib.modeladmin.views import CreateView
 from django.http import HttpResponseRedirect
 from django.contrib import messages
-from .models import (
-    PricePage, PriceIndexPage, PriceData, DataImportLog,
-    MainCategory, Category, SubCategory, ScrollTimeRequest, AllData
-)
+from data_management.models import AllData
+from price_display.models import PricePage, PriceIndexPage
+from price_models.models import PriceData, DataImportLog
+from price_data_ingestion.models import ScrollTimeRequest, MainCategory, Category, SubCategory
 from .forms import DataImportForm
 
 
@@ -63,7 +63,7 @@ class MainCategoryAdmin(ModelAdmin):
     ordering = ('order', 'name')
 
 
-# Category ModelAdmin
+# Category ModelAdmin  
 class CategoryAdmin(ModelAdmin):
     model = Category
     menu_label = 'گروه‌ها'
@@ -73,6 +73,12 @@ class CategoryAdmin(ModelAdmin):
     list_filter = ('main_category', 'is_active')
     search_fields = ('name', 'main_category__name')
     ordering = ('main_category', 'order', 'name')
+
+
+# SubCategory ModelAdmin
+
+
+
 
 
 # SubCategory ModelAdmin

@@ -9,4 +9,5 @@ class DataManagementConfig(AppConfig):
     
     def ready(self):
         """تنظیمات اولیه اپلیکیشن"""
-        pass
+        # فعال‌سازی signals برای تجمیع خودکار داده‌ها
+        import data_management.signals

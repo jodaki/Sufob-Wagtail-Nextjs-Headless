@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 from wagtail.models import Page, Site
 from home.models import HomePage
-from prices.models import PriceIndexPage, PricePage
+from price_display.models import PriceIndexPage, PricePage
 
 class Command(BaseCommand):
     help = 'ایجاد صفحات نمونه برای سیستم قیمت‌گذاری'

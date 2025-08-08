@@ -4,7 +4,9 @@ from django.urls import reverse
 from django.http import HttpResponseRedirect
 from django.contrib import messages
 from django.db.models import Count, Avg, Max, Min
-from .models import PriceIndexPage, PricePage, PriceData, DataImportLog
+from price_models.models import PriceData, DataImportLog
+from data_management.models import AllData
+from price_display.models import PriceIndexPage, PricePage
 from .forms import DataImportForm
 import json
 
@@ -180,12 +182,4 @@ class PriceDataImportAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-# ثبت کلاس مدیریت وارد کردن داده
-class PriceDataImportProxy(PriceData):
-    """کلاس Proxy برای مدیریت وارد کردن داده‌ها"""
-    class Meta:
-        proxy = True
-        verbose_name = "وارد کردن داده قیمت"
-        verbose_name_plural = "🔄 وارد کردن داده‌های قیمت"
-
-admin.site.register(PriceDataImportProxy, PriceDataImportAdmin)
+# تمام proxy model ها حذف شدند - مدل‌ها به اپلیکیشن‌های مناسب منتقل شدند
