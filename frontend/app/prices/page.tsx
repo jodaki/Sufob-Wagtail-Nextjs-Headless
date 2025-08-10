@@ -11,13 +11,13 @@ import {
 } from '../lib/data';
 
 export default function PricesPage() {
-    const [pricePages, setPricePages] = useState([]);
-    const [indexPage, setIndexPage] = useState(null);
-    const [selectedCommodity, setSelectedCommodity] = useState('');
-    const [commodities, setCommodities] = useState([]);
-    const [chartData, setChartData] = useState([]);
-    const [transactions, setTransactions] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [pricePages, setPricePages] = useState<any[]>([]);
+    const [indexPage, setIndexPage] = useState<any>(null);
+    const [selectedCommodity, setSelectedCommodity] = useState<string>('');
+    const [commodities, setCommodities] = useState<any[]>([]);
+    const [chartData, setChartData] = useState<any[]>([]);
+    const [transactions, setTransactions] = useState<any[]>([]);
+    const [loading, setLoading] = useState<boolean>(false);
     const [statistics, setStatistics] = useState({
         latest: 0,
         highest: 0,
@@ -25,9 +25,9 @@ export default function PricesPage() {
         average: 0
     });
     
-    const chartContainerRef = useRef(null);
-    const chartRef = useRef(null);
-    const lineSeriesRef = useRef(null);
+    const chartContainerRef = useRef<HTMLDivElement | null>(null);
+    const chartRef = useRef<any>(null);
+    const lineSeriesRef = useRef<any>(null);
 
     // Load data on component mount
     useEffect(() => {
@@ -78,12 +78,12 @@ export default function PricesPage() {
     const initChart = () => {
         if (!chartContainerRef.current) return;
 
-        const chart = createChart(chartContainerRef.current, {
-            width: chartContainerRef.current.clientWidth,
+    const chart = createChart(chartContainerRef.current as HTMLDivElement, {
+        width: (chartContainerRef.current as HTMLDivElement).clientWidth,
             height: 400,
             layout: {
-                backgroundColor: '#ffffff',
-                textColor: '#333333',
+                background: '#ffffff' as any,
+                textColor: '#333333' as any,
             },
             grid: {
                 vertLines: { color: '#e1e1e1' },
@@ -102,12 +102,12 @@ export default function PricesPage() {
             },
         });
 
-        const lineSeries = chart.addLineSeries({
+    const lineSeries = (chart as any).addLineSeries({
             color: '#2196F3',
             lineWidth: 2,
             priceFormat: {
                 type: 'custom',
-                formatter: (price) => price.toLocaleString() + ' ریال',
+        formatter: (price: number) => price.toLocaleString() + ' ریال',
             },
         });
 
@@ -134,25 +134,26 @@ export default function PricesPage() {
         setLoading(true);
         try {
             // Get chart data
+            // New: use TradingView-friendly API (fallback: transactions if needed)
             const chartPoints = await getPriceChartData(selectedCommodity, 30);
             setChartData(chartPoints);
 
             // Get detailed transactions
-            const data = await getTransactionsFromWagtail(selectedCommodity);
+            const data = await getTransactionsFromWagtail(selectedCommodity as any);
             if (data.items && data.items.length > 0) {
                 setTransactions(data.items.slice(0, 20));
                 
                 // Calculate statistics
-                const prices = data.items.map(item => 
+                const prices = data.items.map((item: any) => 
                     parseFloat(item.final_price) || parseFloat(item.base_price) || 0
-                ).filter(price => price > 0);
+                ).filter((price: number) => price > 0);
 
                 if (prices.length > 0) {
                     setStatistics({
-                        latest: prices[0],
+                        latest: prices[0] as number,
                         highest: Math.max(...prices),
                         lowest: Math.min(...prices),
-                        average: prices.reduce((sum, price) => sum + price, 0) / prices.length
+                        average: prices.reduce((sum: number, price: number) => sum + price, 0) / prices.length
                     });
                 }
             }
@@ -188,7 +189,11 @@ export default function PricesPage() {
                                         {page.title}
                                     </a>
                                 </h3>
-                                <p className="text-gray-600 mb-4">{page.commodity_name}</p>
+                                <p className="text-gray-600 mb-4">
+                                    {page.get_main_category_name || ''}
+                                    {page.get_category_name ? ` / ${page.get_category_name}` : ''}
+                                    {page.get_subcategory_name ? ` / ${page.get_subcategory_name}` : ''}
+                                </p>
                                 {page.chart_description && (
                                     <div 
                                         className="text-sm text-gray-500"

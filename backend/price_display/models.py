@@ -6,6 +6,12 @@ from wagtail.fields import RichTextField
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.api import APIField
 from wagtail_headless_preview.models import HeadlessPreviewMixin
+import jdatetime
+
+# وابستگی‌ها
+from price_data_ingestion.models import MainCategory, Category, SubCategory
+from blog.models import BlogCategory, BlogPage
+from data_management.models import AllData
 
 
 class PriceIndexPage(HeadlessPreviewMixin, Page):
@@ -31,40 +37,74 @@ class PriceIndexPage(HeadlessPreviewMixin, Page):
 
 class PricePage(HeadlessPreviewMixin, Page):
     """صفحه نمایش چارت قیمت برای یک کالا - Headless CMS"""
-    COMMODITY_CHOICES = [
-        ('کنسانتره آهن', 'کنسانتره آهن'),
-        ('سنگ آهن', 'سنگ آهن'),
-        ('کاتد مس', 'کاتد مس'),
-        ('شمش آلومینیوم', 'شمش آلومینیوم'),
-        ('کک متالورژی', 'کک متالورژی'),
-    ]
-    
-    commodity_name = models.CharField(
-        max_length=100, 
-        choices=COMMODITY_CHOICES,
-        help_text="نام کالا را انتخاب کنید"
+
+    # انتخاب دسته‌بندی کالا برای چارت
+    main_category = models.ForeignKey(
+        MainCategory,
+        on_delete=models.PROTECT,
+        related_name="price_pages",
+        verbose_name="گروه اصلی",
+        null=True,
+        blank=True,
     )
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.PROTECT,
+        related_name="price_pages",
+        verbose_name="گروه",
+        null=True,
+        blank=True,
+    )
+    subcategory = models.ForeignKey(
+        SubCategory,
+        on_delete=models.PROTECT,
+        related_name="price_pages",
+        verbose_name="زیرگروه",
+        null=True,
+        blank=True,
+    )
+
     chart_description = RichTextField(blank=True, help_text="توضیحات چارت")
-    show_statistics = models.BooleanField(default=True, help_text="نمایش آمار")
     chart_days = models.IntegerField(default=30, help_text="تعداد روزهای نمایش در چارت")
+
+    # فهرست مطالب (آخرین ۳ پست از یک دسته‌بندی وبلاگ)
+    blog_category = models.ForeignKey(
+        BlogCategory,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=False,
+        verbose_name="فهرست مطالب",
+        help_text="دسته‌بندی وبلاگ برای نمایش ۳ پست آخر",
+    )
     
     content_panels = Page.content_panels + [
         MultiFieldPanel([
-            FieldPanel('commodity_name'),
+            FieldPanel('main_category'),
+            FieldPanel('category'),
+            FieldPanel('subcategory'),
             FieldPanel('chart_days'),
-            FieldPanel('show_statistics'),
         ], heading="تنظیمات چارت"),
         FieldPanel('chart_description'),
+        MultiFieldPanel([
+            FieldPanel('blog_category'),
+        ], heading="فهرست مطالب"),
     ]
     
     # API fields for Next.js frontend
     api_fields = [
-        APIField('commodity_name'),
+        APIField('main_category'),
+        APIField('category'),
+        APIField('subcategory'),
+        APIField('get_main_category_name'),
+        APIField('get_category_name'),
+        APIField('get_subcategory_name'),
         APIField('chart_description'),
-        APIField('show_statistics'),
         APIField('chart_days'),
-        APIField('get_chart_data'),
-        APIField('get_statistics'),
+        APIField('get_daily_chart_data'),
+        APIField('get_weekly_chart_data'),
+        APIField('get_monthly_chart_data'),
+        APIField('get_yearly_chart_data'),
+        APIField('get_latest_posts'),
     ]
     
     parent_page_types = ['price_display.PriceIndexPage']
@@ -74,67 +114,217 @@ class PricePage(HeadlessPreviewMixin, Page):
         verbose_name_plural = "صفحات قیمت"
         
     def __str__(self):
-        return f"قیمت {self.commodity_name}"
+        return f"قیمت: {self.main_category.name} / {self.category.name} / {self.subcategory.name}"
     
-    def get_chart_data(self):
-        """دریافت داده‌های چارت از data_management"""
-        from data_management.models import DailyData
-        
-        end_date = timezone.now().date()
-        start_date = end_date - timedelta(days=self.chart_days)
-        
-        # دریافت داده‌های روزانه
-        daily_data = DailyData.objects.filter(
-            trade_date__range=[start_date, end_date]
-        ).order_by('trade_date')
-        
-        # فرمت داده‌ها برای چارت
-        chart_data = {
-            'labels': [],
+    def _filtered_alldata_queryset(self):
+        """برگرداندن کوئری داده‌های خام برای محصول انتخاب‌شده.
+        سعی می‌کنیم بر اساس نام زیرگروه/گروه فیلتر کنیم (نزدیک‌ترین معیار موجود).
+        """
+        # تلاش برای فیلتر بر پایه نام کالا شامل نام زیرگروه یا گروه
+        sub_name = self.subcategory.name if self.subcategory else ''
+        cat_name = self.category.name if self.category else ''
+        qs = AllData.objects.all()
+        if sub_name:
+            qs = qs.filter(commodity_name__icontains=sub_name)
+        elif cat_name:
+            qs = qs.filter(commodity_name__icontains=cat_name)
+        return qs
+
+    def get_daily_chart_data(self):
+        """چارت روزانه از AllData برای محصول انتخاب‌شده (آخرین chart_days روز)."""
+        # داده‌ها بر اساس تاریخ شمسی ذخیره شده‌اند به صورت YYYY/MM/DD
+        qs = self._filtered_alldata_queryset()
+        # آخرین chart_days روز بر اساس رشته تاریخ مرتب شده
+        day_points = {}
+        for item in qs.values('transaction_date', 'final_price'):
+            d = item['transaction_date'] or ''
+            try:
+                price = float(item['final_price']) if item['final_price'] is not None else None
+            except Exception:
+                price = None
+            if not d:
+                continue
+            lst = day_points.setdefault(d, [])
+            if price is not None:
+                lst.append(price)
+
+        # محاسبه میانگین روزانه و مرتب‌سازی
+        days_sorted = sorted(day_points.keys())[-self.chart_days:]
+        labels = []
+        data = []
+        for d in days_sorted:
+            prices = day_points[d]
+            avg = sum(prices) / len(prices) if prices else 0
+            labels.append(d)
+            data.append(round(avg, 2))
+
+        return {
+            'labels': labels,
             'datasets': [{
-                'label': f'قیمت {self.commodity_name}',
-                'data': [],
+                'label': f'قیمت {self.subcategory.name}',
+                'data': data,
                 'borderColor': 'rgb(75, 192, 192)',
                 'backgroundColor': 'rgba(75, 192, 192, 0.2)',
                 'tension': 0.1
             }]
         }
-        
-        for data in daily_data:
-            chart_data['labels'].append(data.trade_date_shamsi or data.trade_date.strftime('%Y/%m/%d'))
-            chart_data['datasets'][0]['data'].append(float(data.avg_final_price or 0))
-        
-        return chart_data
-    
-    def get_statistics(self):
-        """دریافت آمار کلی"""
-        from data_management.models import DailyData, AllData
-        
-        end_date = timezone.now().date()
-        start_date = end_date - timedelta(days=self.chart_days)
-        
-        # آمار روزانه
-        daily_stats = DailyData.objects.filter(
-            trade_date__range=[start_date, end_date]
-        ).aggregate(
-            avg_price=models.Avg('avg_final_price'),
-            max_price=models.Max('max_price'),
-            min_price=models.Min('min_price'),
-            total_volume=models.Sum('total_contracts_volume')
-        )
-        
-        # آمار کلی از AllData
-        all_data_stats = AllData.objects.filter(
-            commodity_name=self.commodity_name
-        ).aggregate(
-            total_records=models.Count('id'),
-            latest_date=models.Max('transaction_date')
-        )
-        
+
+    def get_weekly_chart_data(self):
+        """چارت هفتگی با تبدیل تاریخ شمسی به میلادی و گروه‌بندی هفته‌ای."""
+        qs = self._filtered_alldata_queryset()
+        week_points = {}
+        for item in qs.values('transaction_date', 'final_price'):
+            d = item['transaction_date'] or ''
+            if not d or len(d) < 10:
+                continue
+            try:
+                jy, jm, jd = int(d[0:4]), int(d[5:7]), int(d[8:10])
+                gdate = jdatetime.date(jy, jm, jd).togregorian()
+                year, week, _ = gdate.isocalendar()
+                key = f"{year}-W{week:02d}"
+                price = float(item['final_price']) if item['final_price'] is not None else None
+            except Exception:
+                continue
+            lst = week_points.setdefault(key, [])
+            if price is not None:
+                lst.append(price)
+
+        weeks_sorted = sorted(week_points.keys())
+        labels = []
+        data = []
+        for key in weeks_sorted:
+            prices = week_points[key]
+            avg = sum(prices) / len(prices) if prices else 0
+            labels.append(key)
+            data.append(round(avg, 2))
+
         return {
-            'period_days': self.chart_days,
-            'daily_stats': daily_stats,
-            'all_data_stats': all_data_stats,
-            'start_date': start_date.strftime('%Y/%m/%d'),
-            'end_date': end_date.strftime('%Y/%m/%d')
+            'labels': labels,
+            'datasets': [{
+                'label': f'میانگین هفتگی {self.subcategory.name}',
+                'data': data,
+                'borderColor': 'rgb(153, 102, 255)',
+                'backgroundColor': 'rgba(153, 102, 255, 0.2)',
+                'tension': 0.1
+            }]
         }
+
+    def get_monthly_chart_data(self):
+        """چارت ماهانه با گروه‌بندی بر اساس YYYY/MM از تاریخ شمسی."""
+        qs = self._filtered_alldata_queryset()
+        month_points = {}
+        for item in qs.values('transaction_date', 'final_price'):
+            d = item['transaction_date'] or ''
+            if not d or len(d) < 7:
+                continue
+            key = d[0:7]  # YYYY/MM
+            try:
+                price = float(item['final_price']) if item['final_price'] is not None else None
+            except Exception:
+                price = None
+            lst = month_points.setdefault(key, [])
+            if price is not None:
+                lst.append(price)
+
+        months_sorted = sorted(month_points.keys())
+        labels = []
+        data = []
+        for key in months_sorted:
+            prices = month_points[key]
+            avg = sum(prices) / len(prices) if prices else 0
+            labels.append(key)
+            data.append(round(avg, 2))
+
+        return {
+            'labels': labels,
+            'datasets': [{
+                'label': f'میانگین ماهانه {self.subcategory.name}',
+                'data': data,
+                'borderColor': 'rgb(255, 159, 64)',
+                'backgroundColor': 'rgba(255, 159, 64, 0.2)',
+                'tension': 0.1
+            }]
+        }
+
+    def get_yearly_chart_data(self):
+        """چارت سالانه با گروه‌بندی بر اساس YYYY از تاریخ شمسی."""
+        qs = self._filtered_alldata_queryset()
+        year_points = {}
+        for item in qs.values('transaction_date', 'final_price'):
+            d = item['transaction_date'] or ''
+            if not d or len(d) < 4:
+                continue
+            key = d[0:4]  # YYYY
+            try:
+                price = float(item['final_price']) if item['final_price'] is not None else None
+            except Exception:
+                price = None
+            lst = year_points.setdefault(key, [])
+            if price is not None:
+                lst.append(price)
+
+        years_sorted = sorted(year_points.keys())
+        labels = []
+        data = []
+        for key in years_sorted:
+            prices = year_points[key]
+            avg = sum(prices) / len(prices) if prices else 0
+            labels.append(key)
+            data.append(round(avg, 2))
+
+        return {
+            'labels': labels,
+            'datasets': [{
+                'label': f'میانگین سالانه {self.subcategory.name}',
+                'data': data,
+                'borderColor': 'rgb(54, 162, 235)',
+                'backgroundColor': 'rgba(54, 162, 235, 0.2)',
+                'tension': 0.1
+            }]
+        }
+    
+    def get_latest_posts(self):
+        """آخرین سه پست وبلاگ از دسته‌بندی انتخاب‌شده."""
+        if not self.blog_category:
+            return []
+        # انتخاب آخرین ۳ پست دارای این دسته‌بندی
+        posts = (
+            BlogPage.objects.live()
+            .filter(categories=self.blog_category)
+            .order_by('-first_published_at')[:3]
+        )
+        # بازگرداندن داده‌های ساده برای API
+        return [
+            {
+                'id': p.id,
+                'title': p.title,
+                'slug': p.slug,
+                'first_published_at': p.first_published_at,
+                'url': p.url,
+            }
+            for p in posts
+        ]
+
+    def get_main_category_name(self):
+        """بازگرداندن نام گروه اصلی برای API"""
+        return self.main_category.name if self.main_category else None
+
+    def get_category_name(self):
+        """بازگرداندن نام گروه برای API"""
+        return self.category.name if self.category else None
+
+    def get_subcategory_name(self):
+        """بازگرداندن نام زیرگروه برای API"""
+        return self.subcategory.name if self.subcategory else None
+
+    # اعتبارسنجی ارتباطات انتخابی
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.category and self.main_category and self.category.main_category_id != self.main_category_id:
+            errors['category'] = "گروه انتخاب‌شده با گروه اصلی هماهنگ نیست."
+        if self.subcategory and self.category and self.subcategory.category_id != self.category_id:
+            errors['subcategory'] = "زیرگروه انتخاب‌شده با گروه هماهنگ نیست."
+        if errors:
+            from django.core.exceptions import ValidationError
+            raise ValidationError(errors)

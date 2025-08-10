@@ -6,6 +6,7 @@ from blog.api.v2.views import (
 from prices.api.v2.views import (
     TransactionAPIViewSet,
     CommodityAPIViewSet,
+    PriceSeriesAPIViewSet,
 )
 from wagtail.api.v2.router import WagtailAPIRouter
 from wagtail.api.v2.views import PagesAPIViewSet
@@ -22,3 +23,4 @@ api_router.register_endpoint("tags", BlogTagAPIViewSet)
 api_router.register_endpoint("page_preview", PagePreviewAPIViewSet)
 api_router.register_endpoint("transactions", TransactionAPIViewSet)
 api_router.register_endpoint("commodities", CommodityAPIViewSet)
+api_router.register_endpoint("price-series", PriceSeriesAPIViewSet)

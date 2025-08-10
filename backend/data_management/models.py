@@ -210,6 +210,174 @@ class YearlyData(BaseAggregatedData):
         return f"سال {self.year}"
 
 
+# مدل‌های جدید برای سری‌های زمانی کالاها
+
+class CommodityDailyPriceSeries(models.Model):
+    """سری‌های قیمت روزانه هر کالا"""
+    
+    commodity_name = models.CharField(max_length=100, verbose_name="نام کالا")
+    trade_date = models.DateField(verbose_name="تاریخ معامله")
+    trade_date_shamsi = models.CharField(max_length=10, verbose_name="تاریخ شمسی")
+    
+    # قیمت‌ها (فقط از final_price استفاده می‌کنیم)
+    avg_price = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        verbose_name="میانگین قیمت نهایی"
+    )
+    min_price = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        verbose_name="کمترین قیمت"
+    )
+    max_price = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        verbose_name="بیشترین قیمت"
+    )
+    
+    # حجم‌ها
+    total_volume = models.BigIntegerField(default=0, verbose_name="مجموع حجم معاملات")
+    transaction_count = models.IntegerField(default=0, verbose_name="تعداد معاملات")
+    
+    # متادیتا
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'commodity_daily_price_series'
+        verbose_name = "سری قیمت روزانه کالا"
+        verbose_name_plural = "سری‌های قیمت روزانه کالاها"
+        unique_together = ['commodity_name', 'trade_date']
+        ordering = ['-trade_date', 'commodity_name']
+        indexes = [
+            models.Index(fields=['commodity_name', 'trade_date']),
+            models.Index(fields=['trade_date']),
+        ]
+        
+    def __str__(self):
+        return f"{self.commodity_name} - {self.trade_date_shamsi}"
+
+
+class CommodityWeeklyPriceSeries(models.Model):
+    """سری‌های قیمت هفتگی هر کالا"""
+    
+    commodity_name = models.CharField(max_length=100, verbose_name="نام کالا")
+    year = models.IntegerField(verbose_name="سال")
+    week_number = models.IntegerField(verbose_name="شماره هفته")
+    week_start_date = models.DateField(verbose_name="تاریخ شروع هفته")
+    week_end_date = models.DateField(verbose_name="تاریخ پایان هفته")
+    
+    # قیمت‌ها
+    avg_price = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        verbose_name="میانگین قیمت نهایی"
+    )
+    min_price = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        verbose_name="کمترین قیمت"
+    )
+    max_price = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        verbose_name="بیشترین قیمت"
+    )
+    
+    # حجم‌ها
+    total_volume = models.BigIntegerField(default=0, verbose_name="مجموع حجم معاملات")
+    transaction_count = models.IntegerField(default=0, verbose_name="تعداد معاملات")
+    
+    # متادیتا
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'commodity_weekly_price_series'
+        verbose_name = "سری قیمت هفتگی کالا"
+        verbose_name_plural = "سری‌های قیمت هفتگی کالاها"
+        unique_together = ['commodity_name', 'year', 'week_number']
+        ordering = ['-year', '-week_number', 'commodity_name']
+        
+    def __str__(self):
+        return f"{self.commodity_name} - هفته {self.week_number} سال {self.year}"
+
+
+class CommodityMonthlyPriceSeries(models.Model):
+    """سری‌های قیمت ماهانه هر کالا"""
+    
+    commodity_name = models.CharField(max_length=100, verbose_name="نام کالا")
+    year = models.IntegerField(verbose_name="سال")
+    month = models.IntegerField(verbose_name="ماه")
+    month_shamsi = models.CharField(max_length=7, verbose_name="ماه و سال شمسی")
+    
+    # قیمت‌ها
+    avg_price = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        verbose_name="میانگین قیمت نهایی"
+    )
+    min_price = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        verbose_name="کمترین قیمت"
+    )
+    max_price = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        verbose_name="بیشترین قیمت"
+    )
+    
+    # حجم‌ها
+    total_volume = models.BigIntegerField(default=0, verbose_name="مجموع حجم معاملات")
+    transaction_count = models.IntegerField(default=0, verbose_name="تعداد معاملات")
+    
+    # متادیتا
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'commodity_monthly_price_series'
+        verbose_name = "سری قیمت ماهانه کالا"
+        verbose_name_plural = "سری‌های قیمت ماهانه کالاها"
+        unique_together = ['commodity_name', 'year', 'month']
+        ordering = ['-year', '-month', 'commodity_name']
+        
+    def __str__(self):
+        return f"{self.commodity_name} - {self.month_shamsi}"
+
+
+class CommodityYearlyPriceSeries(models.Model):
+    """سری‌های قیمت سالانه هر کالا"""
+    
+    commodity_name = models.CharField(max_length=100, verbose_name="نام کالا")
+    year = models.IntegerField(verbose_name="سال شمسی")
+    
+    # قیمت‌ها
+    avg_price = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        verbose_name="میانگین قیمت نهایی"
+    )
+    min_price = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        verbose_name="کمترین قیمت"
+    )
+    max_price = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True,
+        verbose_name="بیشترین قیمت"
+    )
+    
+    # حجم‌ها
+    total_volume = models.BigIntegerField(default=0, verbose_name="مجموع حجم معاملات")
+    transaction_count = models.IntegerField(default=0, verbose_name="تعداد معاملات")
+    
+    # متادیتا
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'commodity_yearly_price_series'
+        verbose_name = "سری قیمت سالانه کالا"
+        verbose_name_plural = "سری‌های قیمت سالانه کالاها"
+        unique_together = ['commodity_name', 'year']
+        ordering = ['-year', 'commodity_name']
+        
+    def __str__(self):
+        return f"{self.commodity_name} - سال {self.year}"
+
+
 class DataAggregationLog(models.Model):
     """لاگ عملیات تجمیع داده‌ها"""
     

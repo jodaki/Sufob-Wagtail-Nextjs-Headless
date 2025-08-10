@@ -12,17 +12,20 @@ import json
 
 @admin.register(PricePage)
 class PricePageAdmin(admin.ModelAdmin):
-    list_display = ('title', 'commodity_name', 'slug', 'live', 'first_published_at')
-    list_filter = ('live', 'first_published_at', 'commodity_name')
-    search_fields = ('title', 'commodity_name', 'slug')
+    list_display = ('title', 'main_category', 'category', 'subcategory', 'slug', 'live', 'first_published_at')
+    list_filter = ('live', 'first_published_at', 'main_category', 'category', 'subcategory')
+    search_fields = ('title', 'slug')
     readonly_fields = ('slug', 'path', 'depth', 'numchild', 'url_path')
     
     fieldsets = (
         ('اطلاعات صفحه قیمت', {
-            'fields': ('title', 'commodity_name', 'chart_description')
+            'fields': ('title', 'chart_description')
         }),
         ('تنظیمات چارت', {
-            'fields': ('show_statistics', 'chart_days')
+            'fields': ('main_category', 'category', 'subcategory', 'chart_days')
+        }),
+        ('فهرست مطالب', {
+            'fields': ('blog_category',)
         }),
         ('تنظیمات انتشار', {
             'fields': ('slug', 'live', 'show_in_menus')
